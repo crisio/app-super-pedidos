@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from "react-native";
 import {
   calcularTotales,
   canales,
@@ -14,24 +14,27 @@ import {
   type Pago,
   type ProductoCatalogo,
 } from "@super-pedidos/compartido";
+import { Minus, Plus, Search, ShoppingBasket } from "@/components/iconos";
 import { SelectorLocal } from "@/components/selector-local";
 import {
   Boton,
   Campo,
   Cargando,
   Chip,
+  Encabezado,
   FilaChips,
   Fila,
+  FondoDecorado,
   Insignia,
   MensajeError,
   Pantalla,
+  Separador,
   Tarjeta,
-  Texto,
 } from "@/components/ui";
 import { ErrorDeApi, mensajeDeError } from "@/lib/api";
 import { useCatalogo, useCrearPedido, useLocales } from "@/lib/consultas";
 import { useUsuario } from "@/lib/sesion";
-import { ANCHO_MAXIMO, useTema } from "@/tema";
+import { colores } from "@/tema";
 
 const MAX_RESULTADOS = 40;
 
@@ -43,10 +46,27 @@ function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
+function Paso({ numero, titulo, children }: { numero: number; titulo: string; children: ReactNode }) {
+  return (
+    <Tarjeta>
+      <View className="flex-row items-center gap-3">
+        <View className="h-6 w-6 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10">
+          <Text className="text-xs font-bold text-emerald-300">{numero}</Text>
+        </View>
+        <Text className="text-base font-semibold text-white">{titulo}</Text>
+      </View>
+      {children}
+    </Tarjeta>
+  );
+}
+
+function Subtitulo({ children }: { children: string }) {
+  return <Text className="text-sm font-medium text-zinc-300">{children}</Text>;
+}
+
 export default function NuevoPedido() {
   const usuario = useUsuario();
   const router = useRouter();
-  const t = useTema();
   const { width } = useWindowDimensions();
   const pantallaAncha = width >= 900;
   const esCentral = usuario.rol === "central";
@@ -139,12 +159,12 @@ export default function NuevoPedido() {
 
   const formulario = (
     <>
-      <Texto variante="titulo">Capturar pedido</Texto>
-      <Texto variante="tenue">
-        Para pedidos que llegan por WhatsApp, teléfono, redes o un delivery externo.
-      </Texto>
-      <Tarjeta>
-        <Texto variante="subtitulo">¿Por dónde llegó?</Texto>
+      <Encabezado
+        titulo="Capturar pedido"
+        descripcion="Para pedidos que llegan por WhatsApp, teléfono, redes o un delivery externo."
+      />
+
+      <Paso numero={1} titulo="¿Por dónde llegó?">
         <FilaChips>
           {canalesDeCaptura.map((opcion) => (
             <Chip
@@ -157,7 +177,7 @@ export default function NuevoPedido() {
         </FilaChips>
         {esCentral && (
           <>
-            <Texto variante="subtitulo">Local que lo prepara</Texto>
+            <Subtitulo>Local que lo prepara</Subtitulo>
             {locales.data ? (
               <SelectorLocal locales={locales.data} valor={localElegido} onCambiar={cambiarLocal} />
             ) : (
@@ -166,10 +186,9 @@ export default function NuevoPedido() {
             {errores.localId ? <MensajeError mensaje={errores.localId} /> : null}
           </>
         )}
-      </Tarjeta>
+      </Paso>
 
-      <Tarjeta>
-        <Texto variante="subtitulo">Cliente</Texto>
+      <Paso numero={2} titulo="Cliente">
         <Campo
           etiqueta="Nombre"
           value={clienteNombre}
@@ -185,10 +204,9 @@ export default function NuevoPedido() {
           placeholder="9999-9999"
           error={errores.clienteTelefono}
         />
-      </Tarjeta>
+      </Paso>
 
-      <Tarjeta>
-        <Texto variante="subtitulo">Entrega</Texto>
+      <Paso numero={3} titulo="Entrega y pago">
         <FilaChips>
           {(Object.keys(entregas) as Entrega[]).map((opcion) => (
             <Chip
@@ -218,7 +236,7 @@ export default function NuevoPedido() {
             error={errores.deliveryNombre}
           />
         )}
-        <Texto variante="subtitulo">Pago</Texto>
+        <Subtitulo>Pago</Subtitulo>
         <FilaChips>
           {(Object.keys(pagos) as Pago[]).map((opcion) => (
             <Chip
@@ -236,12 +254,13 @@ export default function NuevoPedido() {
           multiline
           placeholder="Por ejemplo: si no hay, cambiar por otra marca"
         />
-      </Tarjeta>
+      </Paso>
 
-      <Tarjeta>
-        <Texto variante="subtitulo">Productos</Texto>
+      <Paso numero={4} titulo="Productos">
         {!localId ? (
-          <Texto variante="tenue">Elige primero el local para ver lo que tiene disponible.</Texto>
+          <Text className="text-sm text-zinc-400">
+            Elige primero el local para ver lo que tiene disponible.
+          </Text>
         ) : catalogo.isPending ? (
           <Cargando />
         ) : catalogo.isError ? (
@@ -255,31 +274,41 @@ export default function NuevoPedido() {
               placeholder="Nombre o SKU"
               autoCorrect={false}
             />
-            {resultados.map((producto) => (
-              <FilaProducto
-                key={producto.id}
-                producto={producto}
-                cantidad={cantidades[producto.id] ?? 0}
-                onCambiar={(cantidad) => cambiarCantidad(producto.id, cantidad)}
-              />
-            ))}
-            {resultados.length === 0 && <Texto variante="tenue">No hay productos con ese nombre.</Texto>}
+            <View>
+              {resultados.map((producto) => (
+                <FilaProducto
+                  key={producto.id}
+                  producto={producto}
+                  cantidad={cantidades[producto.id] ?? 0}
+                  onCambiar={(cantidad) => cambiarCantidad(producto.id, cantidad)}
+                />
+              ))}
+            </View>
+            {resultados.length === 0 && (
+              <View className="flex-row items-center gap-2">
+                <Search size={14} color={colores.apagado} />
+                <Text className="text-sm text-zinc-400">No hay productos con ese nombre.</Text>
+              </View>
+            )}
             {resultados.length === MAX_RESULTADOS && (
-              <Texto variante="pequeno">
+              <Text className="text-xs text-zinc-500">
                 Mostrando los primeros {MAX_RESULTADOS}. Busca para encontrar más.
-              </Texto>
+              </Text>
             )}
           </>
         )}
-      </Tarjeta>
+      </Paso>
     </>
   );
 
   const resumen = (
-    <Tarjeta>
-      <Texto variante="subtitulo">Resumen</Texto>
+    <Tarjeta brillo>
+      <View className="flex-row items-center gap-2">
+        <ShoppingBasket size={16} color={colores.marca} />
+        <Text className="text-base font-semibold text-white">Resumen</Text>
+      </View>
       {elegidos.length === 0 ? (
-        <Texto variante="tenue">Todavía no hay productos.</Texto>
+        <Text className="text-sm text-zinc-500">Todavía no hay productos.</Text>
       ) : (
         elegidos.map(({ producto, cantidad }) => (
           <Fila
@@ -289,6 +318,7 @@ export default function NuevoPedido() {
           />
         ))
       )}
+      <Separador />
       <Fila etiqueta="Subtotal" valor={formatearLempiras(totales.subtotal)} />
       {entrega === "domicilio" && (
         <Fila etiqueta="Envío" valor={totales.envio === 0 ? "Gratis" : formatearLempiras(totales.envio)} />
@@ -317,24 +347,17 @@ export default function NuevoPedido() {
   // En pantallas anchas el resumen queda fijo a la derecha mientras se llena el formulario.
   if (pantallaAncha) {
     return (
-      <View style={{ flex: 1, backgroundColor: t.fondo }}>
-        <View
-          style={{
-            flex: 1,
-            flexDirection: "row",
-            width: "100%",
-            maxWidth: ANCHO_MAXIMO,
-            alignSelf: "center",
-          }}
-        >
+      <View className="flex-1 bg-fondo">
+        <FondoDecorado />
+        <View className="w-full max-w-[1200px] flex-1 flex-row self-center">
           <ScrollView
             style={{ flex: 2 }}
-            contentContainerStyle={{ padding: 16, gap: 16, paddingBottom: 48 }}
+            contentContainerClassName="gap-5 p-4 pb-12"
             keyboardShouldPersistTaps="handled"
           >
             {formulario}
           </ScrollView>
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingLeft: 0 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerClassName="p-4 pl-0">
             {resumen}
           </ScrollView>
         </View>
@@ -358,44 +381,34 @@ function FilaProducto({
   cantidad: number;
   onCambiar: (cantidad: number) => void;
 }) {
-  const t = useTema();
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 8,
-        borderTopWidth: 1,
-        borderColor: t.borde,
-        opacity: producto.disponible ? 1 : 0.6,
-      }}
+      className={`flex-row items-center gap-3 border-t border-white/5 py-3 ${producto.disponible ? "" : "opacity-60"}`}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Texto variante="fuerte">{producto.nombre}</Texto>
-        <Texto variante="pequeno">
+      <View className="flex-1 gap-0.5">
+        <Text className="text-[15px] font-medium text-zinc-100">{producto.nombre}</Text>
+        <Text className="text-xs text-zinc-500">
           {producto.unidad} · {formatearLempiras(producto.precioCentavos)}
-        </Texto>
+        </Text>
       </View>
       {!producto.disponible ? (
-        <Insignia texto="Agotado" color={t.peligro} fondo={t.peligroSuave} />
+        <Insignia texto="Agotado" tono="rojo" />
       ) : cantidad === 0 ? (
-        <Boton titulo="Agregar" variante="secundario" onPress={() => onCambiar(1)} />
+        <Boton
+          titulo="Agregar"
+          variante="secundario"
+          icono={<Plus size={15} color={colores.texto} />}
+          onPress={() => onCambiar(1)}
+        />
       ) : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <BotonCantidad
-            simbolo="−"
-            etiqueta={`Quitar uno: ${producto.nombre}`}
-            onPress={() => onCambiar(cantidad - 1)}
-          />
-          <Texto variante="fuerte" style={{ minWidth: 28, textAlign: "center" }}>
-            {cantidad}
-          </Texto>
-          <BotonCantidad
-            simbolo="+"
-            etiqueta={`Agregar uno: ${producto.nombre}`}
-            onPress={() => onCambiar(cantidad + 1)}
-          />
+        <View className="flex-row items-center gap-1 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-1">
+          <BotonCantidad etiqueta={`Quitar uno: ${producto.nombre}`} onPress={() => onCambiar(cantidad - 1)}>
+            <Minus size={16} color={colores.marca} />
+          </BotonCantidad>
+          <Text className="min-w-7 text-center text-[15px] font-bold text-white">{cantidad}</Text>
+          <BotonCantidad etiqueta={`Agregar uno: ${producto.nombre}`} onPress={() => onCambiar(cantidad + 1)}>
+            <Plus size={16} color={colores.marca} />
+          </BotonCantidad>
         </View>
       )}
     </View>
@@ -403,34 +416,22 @@ function FilaProducto({
 }
 
 function BotonCantidad({
-  simbolo,
   etiqueta,
   onPress,
+  children,
 }: {
-  simbolo: string;
   etiqueta: string;
   onPress: () => void;
+  children: ReactNode;
 }) {
-  const t = useTema();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={etiqueta}
       onPress={onPress}
-      style={({ pressed }) => ({
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: t.borde,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: pressed ? t.marcaSuave : t.superficie,
-      })}
+      className="h-9 w-9 items-center justify-center rounded-lg hover:bg-emerald-400/20 active:bg-emerald-400/20"
     >
-      <Texto variante="subtitulo" style={{ color: t.marca }}>
-        {simbolo}
-      </Texto>
+      {children}
     </Pressable>
   );
 }

@@ -1,22 +1,23 @@
 import { useState } from "react";
-import { Switch, View } from "react-native";
+import { Switch, Text, View } from "react-native";
 import { formatearLempiras, type ProductoCatalogo } from "@super-pedidos/compartido";
+import { PackageCheck } from "@/components/iconos";
 import { SelectorLocal } from "@/components/selector-local";
 import {
   Campo,
   Cargando,
   Chip,
+  Encabezado,
   FilaChips,
+  Insignia,
   MensajeError,
   Pantalla,
-  Tarjeta,
-  Texto,
   Vacio,
 } from "@/components/ui";
 import { mensajeDeError } from "@/lib/api";
 import { useCambiarDisponibilidad, useCatalogo, useLocales } from "@/lib/consultas";
 import { useUsuario } from "@/lib/sesion";
-import { useTema } from "@/tema";
+import { colores } from "@/tema";
 
 function normalizar(texto: string) {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -47,12 +48,10 @@ export default function Disponibilidad() {
 
   return (
     <Pantalla>
-      <View style={{ gap: 4 }}>
-        <Texto variante="titulo">Disponibilidad por local</Texto>
-        <Texto variante="tenue">
-          Marca lo que se agotó: deja de aparecer para pedidos nuevos de ese local.
-        </Texto>
-      </View>
+      <Encabezado
+        titulo="Disponibilidad por local"
+        descripcion="Marca lo que se agotó: deja de aparecer para pedidos nuevos de ese local."
+      />
 
       {esCentral && locales.data && (
         <SelectorLocal locales={locales.data} valor={localId} onCambiar={setLocalElegido} />
@@ -94,9 +93,12 @@ export default function Disponibilidad() {
           </FilaChips>
           {cambiar.isError ? <MensajeError mensaje={mensajeDeError(cambiar.error)} /> : null}
           {visibles.length === 0 ? (
-            <Vacio titulo={soloAgotados ? "No hay productos agotados" : "No hay productos con ese filtro"} />
+            <Vacio
+              icono={<PackageCheck size={22} color={colores.tenue} />}
+              titulo={soloAgotados ? "No hay productos agotados" : "No hay productos con ese filtro"}
+            />
           ) : (
-            <Tarjeta style={{ gap: 0, paddingVertical: 4 }}>
+            <View className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
               {visibles.map((producto, indice) => (
                 <FilaDisponibilidad
                   key={producto.id}
@@ -105,7 +107,7 @@ export default function Disponibilidad() {
                   onCambiar={(disponible) => cambiar.mutate({ productoId: producto.id, disponible })}
                 />
               ))}
-            </Tarjeta>
+            </View>
           )}
         </>
       )}
@@ -122,35 +124,30 @@ function FilaDisponibilidad({
   primera: boolean;
   onCambiar: (disponible: boolean) => void;
 }) {
-  const t = useTema();
   return (
     <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        paddingVertical: 12,
-        borderTopWidth: primera ? 0 : 1,
-        borderColor: t.borde,
-      }}
+      className={`flex-row items-center gap-3 px-4 py-3.5 hover:bg-white/5 ${primera ? "" : "border-t border-white/5"}`}
     >
-      <View style={{ flex: 1, gap: 2 }}>
-        <Texto variante="fuerte">{producto.nombre}</Texto>
-        <Texto variante="pequeno">
+      <View className="flex-1 gap-0.5">
+        <Text
+          className={`text-[15px] font-medium ${producto.disponible ? "text-zinc-100" : "text-zinc-400"}`}
+        >
+          {producto.nombre}
+        </Text>
+        <Text className="text-xs text-zinc-500">
           {producto.sku} · {producto.unidad} · {formatearLempiras(producto.precioCentavos)}
-        </Texto>
+        </Text>
       </View>
-      <Texto
-        variante="pequeno"
-        style={{ color: producto.disponible ? t.marca : t.peligro, fontWeight: "600" }}
-      >
-        {producto.disponible ? "Disponible" : "Agotado"}
-      </Texto>
+      <Insignia
+        texto={producto.disponible ? "Disponible" : "Agotado"}
+        tono={producto.disponible ? "esmeralda" : "rojo"}
+      />
       <Switch
         accessibilityLabel={`${producto.nombre} disponible`}
         value={producto.disponible}
         onValueChange={onCambiar}
-        trackColor={{ true: t.marca, false: t.borde }}
+        trackColor={{ true: colores.marcaFuerte, false: "#27272a" }}
+        thumbColor="#fafafa"
       />
     </View>
   );

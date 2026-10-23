@@ -24,6 +24,18 @@ Una sola app para **web, iOS y Android** (Expo) y un servidor en **Cloudflare Wo
 
 Reglas provisionales (en `compartido/src/pedidos.ts`): envío a domicilio L 60, gratis desde L 800; tarifa de servicio para deliveries externos L 30.
 
+## Diseño
+
+El estilo sigue a [Spectrum UI](https://github.com/arihantcodes/spectrum-ui) y [Aceternity UI](https://ui.aceternity.com). Esas librerías solo funcionan en páginas web, así que su look se rehízo con piezas que funcionan igual en web, iOS y Android:
+
+- **[NativeWind](https://www.nativewind.dev)**: clases de Tailwind en React Native. La configuración está en `app/tailwind.config.js`.
+- **expo-linear-gradient** para los bordes y botones con degradado.
+- **react-native-svg** para el fondo de puntos y el foco de luz.
+- **Reanimated** para el destello del botón principal, el punto que late en los pedidos nuevos y la aparición de las tarjetas.
+- **[Lucide](https://lucide.dev)**: los mismos íconos que usan shadcn/ui y Spectrum UI. Se importan uno por uno desde `app/src/components/iconos.ts`. Importar desde `lucide-react-native` directamente mete más de mil íconos en la app.
+
+La app siempre usa el tema oscuro. Los componentes base (tarjetas, botones, insignias, campos) están en `app/src/components/ui.tsx`.
+
 ## Estructura
 
 ```
