@@ -1,0 +1,19 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "super-pedidos-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "super-pedidos",
+      "database_id": "65a3badd-bc40-4c3e-9ef1-26ff1e57ec35",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // Agregar aquí el dominio donde se publique la app web, separado por coma.
+    "ORIGENES_PERMITIDOS": "http://localhost:8081"
+  }
+}

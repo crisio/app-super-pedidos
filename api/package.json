@@ -1,0 +1,26 @@
+{
+  "name": "@super-pedidos/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrar:local": "wrangler d1 migrations apply super-pedidos --local",
+    "db:migrar:remoto": "wrangler d1 migrations apply super-pedidos --remote",
+    "db:demo:local": "wrangler d1 execute super-pedidos --local --file semillas/demo.sql",
+    "crear-usuario": "tsx scripts/crear-usuario.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
+  },
+  "dependencies": {
+    "@super-pedidos/compartido": "*",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "@types/node": "^22",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "wrangler": "^4.152.0"
+  }
+}
