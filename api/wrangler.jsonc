@@ -4,6 +4,12 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
+  // La API vive en su propio subdominio; Cloudflare crea el DNS y el certificado al publicar.
+  // Va en el primer nivel (no api.supercoquin...) porque el certificado gratuito de
+  // Cloudflare solo cubre *.christopherpineda.com.
+  "routes": [{ "pattern": "supercoquin-api.christopherpineda.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
   "d1_databases": [
     {
       "binding": "DB",
@@ -13,7 +19,7 @@
     }
   ],
   "vars": {
-    // Agregar aquí el dominio donde se publique la app web, separado por coma.
-    "ORIGENES_PERMITIDOS": "http://localhost:8081"
+    // Sitios web que pueden llamar a la API, separados por coma.
+    "ORIGENES_PERMITIDOS": "https://supercoquin.christopherpineda.com,http://localhost:8081"
   }
 }

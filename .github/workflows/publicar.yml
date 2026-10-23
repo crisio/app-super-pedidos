@@ -1,0 +1,121 @@
+name: Publicar
+
+# En cada cambio a main: revisa el código, publica la API en Cloudflare Workers,
+# crea el subdominio en Cloudflare y publica la app web en GitHub Pages.
+# En pull requests solo revisa el código.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publicar-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ZONA: christopherpineda.com
+  DOMINIO_WEB: supercoquin.christopherpineda.com
+  URL_API: https://supercoquin-api.christopherpineda.com
+
+jobs:
+  revisar:
+    name: Revisar código
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+
+  api:
+    name: Publicar API (Cloudflare Workers)
+    needs: revisar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Revisar que existan los secrets
+        run: |
+          for nombre in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            if [ -z "${!nombre}" ]; then
+              echo "::error::Falta el secret $nombre (Settings → Secrets and variables → Actions)."
+              exit 1
+            fi
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Aplicar migraciones de la base de datos
+        working-directory: api
+        run: npx wrangler d1 migrations apply super-pedidos --remote
+      - name: Publicar el Worker
+        working-directory: api
+        run: npx wrangler deploy
+
+  subdominio:
+    name: Subdominio en Cloudflare
+    needs: revisar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apuntar ${{ env.DOMINIO_WEB }} a GitHub Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: bash .github/scripts/subdominio.sh "$ZONA" "$DOMINIO_WEB" "${{ github.repository_owner }}.github.io"
+
+  web:
+    name: Construir app web
+    needs: revisar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Exportar la web
+        working-directory: app
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.URL_API }}
+        run: npx expo export --platform web
+      - name: Preparar para GitHub Pages
+        working-directory: app/dist
+        # 404.html = index.html para que enlaces como /pedido/123 abran la app.
+        run: |
+          cp index.html 404.html
+          touch .nojekyll
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+
+  publicar-web:
+    name: Publicar web (GitHub Pages)
+    needs: [api, subdominio, web]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: https://${{ env.DOMINIO_WEB }}
+    steps:
+      - uses: actions/deploy-pages@v4

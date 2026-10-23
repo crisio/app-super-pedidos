@@ -87,28 +87,47 @@ npm run format
 
 ## Publicar
 
-La base de datos real (`super-pedidos` en Cloudflare D1) ya tiene el esquema, el catálogo de demostración y un usuario central `admin`.
+Todo se publica solo desde GitHub Actions (`.github/workflows/publicar.yml`) cada vez que hay cambios en `main`:
 
-1. **Servidor:**
-   ```bash
-   cd api
-   npx wrangler login
-   npx wrangler deploy
-   ```
-   Wrangler te da la dirección del servidor, por ejemplo `https://super-pedidos-api.<tu-subdominio>.workers.dev`.
+| Pieza | Dónde vive | Dirección |
+|---|---|---|
+| App web | GitHub Pages | https://supercoquin.christopherpineda.com |
+| API | Cloudflare Workers | https://supercoquin-api.christopherpineda.com |
+| Base de datos | Cloudflare D1 (`super-pedidos`) | — |
 
-2. **App web** (Cloudflare Pages):
-   ```bash
-   cd app
-   EXPO_PUBLIC_API_URL=https://super-pedidos-api.<tu-subdominio>.workers.dev npx expo export --platform web
-   npx wrangler pages deploy dist --project-name super-pedidos
-   ```
+GitHub Pages solo sirve archivos estáticos, así que la API sigue corriendo en Cloudflare Workers, aunque se publica desde GitHub. En pull requests el flujo solo revisa el código (tipos, lint y formato).
 
-3. **Permitir la web en el servidor:** agrega la dirección de la web (por ejemplo `https://super-pedidos.pages.dev`) a `ORIGENES_PERMITIDOS` en `api/wrangler.jsonc`, separada por coma, y vuelve a correr `npx wrangler deploy`.
+En cada publicación, el flujo:
+1. Aplica las migraciones nuevas de `api/migrations/` a la base de datos.
+2. Publica la API. Cloudflare crea solo el subdominio de la API y su certificado.
+3. Crea o corrige en Cloudflare el subdominio `supercoquin` (un CNAME hacia `crisio.github.io`, sin proxy), con el script `.github/scripts/subdominio.sh`.
+4. Construye la app web apuntando a la API y la publica en GitHub Pages.
 
-4. **iOS y Android:** se compilan en la nube con EAS (`npx eas-cli@latest build`). Necesitas una cuenta de Expo, y cuentas de desarrollador de Apple y Google para publicar en las tiendas.
+### Configuración inicial (una sola vez)
 
-Si cambias el esquema, agrega una migración nueva en `api/migrations/` y aplícala con `npm run db:migrar:remoto -w @super-pedidos/api`.
+1. **Token de Cloudflare.** Créalo en Cloudflare → My Profile → API Tokens → Create Custom Token, con estos permisos:
+   - Account · Workers Scripts · Edit
+   - Account · D1 · Edit
+   - Account · Account Settings · Read
+   - Zone · Zone · Read
+   - Zone · DNS · Edit
+   - Zone · Workers Routes · Edit
+
+   En "Zone Resources" elige `christopherpineda.com`.
+2. **Secrets en GitHub** (Settings → Secrets and variables → Actions → New repository secret):
+   - `CLOUDFLARE_API_TOKEN`: el token del paso anterior.
+   - `CLOUDFLARE_ACCOUNT_ID`: el ID de la cuenta de Cloudflare.
+3. **GitHub Pages:** en Settings → Pages → Build and deployment, elige **GitHub Actions** como fuente.
+4. Corre el flujo **Publicar** (Actions → Publicar → Run workflow) o sube un cambio a `main`.
+5. Después de la primera publicación, en Settings → Pages → Custom domain, escribe `supercoquin.christopherpineda.com` y guarda. Cuando GitHub termine de verificarlo, activa **Enforce HTTPS**.
+
+La app solo funciona en el subdominio, no en `crisio.github.io/app-super-pedidos`.
+
+Nunca subas claves al código: el repositorio es público. Todo lo secreto va en los secrets de GitHub.
+
+### iOS y Android
+
+Se compilan en la nube con EAS (`npx eas-cli@latest build`), con `EXPO_PUBLIC_API_URL=https://supercoquin-api.christopherpineda.com`. Necesitas una cuenta de Expo, y cuentas de desarrollador de Apple y Google para publicar en las tiendas.
 
 ## Próximas fases
 

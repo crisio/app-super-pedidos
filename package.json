@@ -11,7 +11,8 @@
     "app": "npm run web -w @super-pedidos/app",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint -w @super-pedidos/app",
-    "format": "prettier --write \"app/src/**/*.{ts,tsx}\" \"api/src/**/*.ts\" \"api/scripts/*.ts\" \"compartido/src/**/*.ts\""
+    "format": "prettier --write \"app/src/**/*.{ts,tsx}\" \"api/src/**/*.ts\" \"api/scripts/*.ts\" \"compartido/src/**/*.ts\"",
+    "format:check": "prettier --check \"app/src/**/*.{ts,tsx}\" \"api/src/**/*.ts\" \"api/scripts/*.ts\" \"compartido/src/**/*.ts\""
   },
   "devDependencies": {
     "prettier": "^3.8.1"
