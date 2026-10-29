@@ -58,7 +58,7 @@ export const rutasCatalogo = new Hono<Entorno>()
     return c.json(results);
   })
   // Búsqueda en el catálogo de un local:
-  // ?q= texto, SKU o código de barras · ?categoria= · ?agotados=1 · ?limite=
+  // ?q= texto, SKU o código de barras · ?categoria= · ?agotados=1 · ?limite= · ?conteo=1 (cuenta agotados)
   .get("/:localId/catalogo", async (c) => {
     const localId = c.req.param("localId");
     verificarAccesoLocal(c.get("usuario"), localId);
@@ -89,6 +89,8 @@ export const rutasCatalogo = new Hono<Entorno>()
       : LIMITE_POR_DEFECTO;
 
     const desde = `FROM productos p LEFT JOIN disponibilidad d ON d.producto_id = p.id AND d.local_id = ?`;
+    // Agotado = marcado en cero (a mano o por SAP). Solo se cuenta si la pantalla lo pide.
+    const conteo = c.req.query("conteo") === "1";
     const [categorias, productos, agotados] = await c.env.DB.batch([
       c.env.DB.prepare(
         `SELECT id, nombre FROM categorias c
@@ -103,9 +105,12 @@ export const rutasCatalogo = new Hono<Entorno>()
           ORDER BY p.nombre
           LIMIT ?`,
       ).bind(...parametros, limite + 1),
-      c.env.DB.prepare(
-        `SELECT COUNT(*) AS total ${desde} WHERE p.activo = 1 AND ${loManeja} AND ${disponible} = 0`,
-      ).bind(localId),
+      conteo
+        ? c.env.DB.prepare(
+            `SELECT COUNT(*) AS total FROM disponibilidad d JOIN productos p ON p.id = d.producto_id
+              WHERE d.local_id = ? AND d.disponible = 0 AND p.activo = 1`,
+          ).bind(localId)
+        : c.env.DB.prepare("SELECT NULL AS total"),
     ]);
 
     const filas = productos.results as FilaProducto[];
@@ -123,7 +128,7 @@ export const rutasCatalogo = new Hono<Entorno>()
         existencias: fila.existencias,
       })),
       hayMas: filas.length > limite,
-      agotados: (agotados.results[0] as { total: number }).total,
+      agotados: (agotados.results[0] as { total: number | null }).total,
     };
     return c.json(catalogo);
   })

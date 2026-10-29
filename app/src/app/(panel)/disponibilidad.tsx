@@ -38,6 +38,7 @@ export default function Disponibilidad() {
     categoria,
     soloAgotados,
     limite: RESULTADOS_POR_PAGINA,
+    contarAgotados: true,
   });
   const cambiar = useCambiarDisponibilidad(localId);
   const productos = catalogo.data?.productos ?? [];
@@ -72,7 +73,7 @@ export default function Disponibilidad() {
           <FilaChips>
             <Chip
               etiqueta="Solo agotados"
-              conteo={catalogo.data.agotados}
+              conteo={catalogo.data.agotados ?? undefined}
               activo={soloAgotados}
               onPress={() => setSoloAgotados(!soloAgotados)}
             />

@@ -13,8 +13,11 @@ UPDATE productos SET nombre_busqueda =
     'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'ü', 'u'), 'ñ', 'n');
 CREATE INDEX productos_por_codigo_barras ON productos (codigo_barras);
 CREATE INDEX productos_por_nombre ON productos (activo, nombre);
+CREATE INDEX productos_por_categoria ON productos (categoria_id, activo);
 
 ALTER TABLE disponibilidad ADD COLUMN existencias REAL;
+-- Para contar los agotados de un local sin recorrer todo el catálogo.
+CREATE INDEX disponibilidad_por_local_estado ON disponibilidad (local_id, disponible);
 
 CREATE TABLE importaciones (
   id TEXT PRIMARY KEY,

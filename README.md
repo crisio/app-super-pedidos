@@ -24,6 +24,23 @@ Una sola app para **web, iOS y Android** (Expo) y un servidor en **Cloudflare Wo
 
 Reglas provisionales (en `compartido/src/pedidos.ts`): envío a domicilio L 60, gratis desde L 800; tarifa de servicio para deliveries externos L 30.
 
+## Importar el inventario de SAP
+
+La pestaña **Importar SAP** está disponible para usuarios centrales y solo en la versión web. Acepta Excel (.xlsx), CSV o el texto que exporta SAP (.txt, incluso en UTF-16). El archivo se lee en la computadora y se manda por lotes, así que no importa cuánto pese: uno de 40 MB con 270 mil filas se importó en unos 15 segundos en pruebas locales.
+
+1. **Archivo:** se reconocen solas las columnas habituales de SAP (Material, Texto breve de material, Centro, Libre utilización, UMB, EAN/UPC, Grupo de artículos, precio), aunque el reporte traiga títulos arriba o repita los encabezados por página.
+2. **Columnas:** se pueden corregir, y se elige el formato de los números (1,234.56 o 1.234,56). La pantalla muestra cómo se lee un número de ejemplo.
+3. **Revisión:** cada centro de SAP se asigna a una sucursal existente, a una sucursal nueva o se omite. Varios almacenes del mismo centro se suman.
+4. **Importación:** si se corta, se reintenta desde el lote que falló.
+
+Reglas:
+- Una sucursal que recibe inventario de SAP solo muestra los productos que vienen en el archivo para su centro. Los que están en cero quedan **agotados**, y los que dejan de venir en una importación posterior también.
+- Un dato que no viene en el archivo no borra el que ya existe. Por ejemplo, una lista de precios con solo "Material" y "Precio" actualiza precios sin tocar lo demás.
+- Los productos sin precio no se pueden vender hasta que se les carga uno.
+- Opcional: desactivar los productos que no vienen en el archivo. Úsalo solo con el inventario completo.
+
+**Límites de Cloudflare:** el plan gratis de Workers permite 100 mil filas escritas y 5 millones leídas por día en D1. Un inventario real (decenas de miles de productos por varias sucursales) pasa ese límite en una sola importación, así que para usarlo con datos reales hace falta el plan **Workers Paid** (5 dólares al mes), que incluye 50 millones de escrituras al mes.
+
 ## Diseño
 
 El estilo sigue a [Spectrum UI](https://github.com/arihantcodes/spectrum-ui) y [Aceternity UI](https://ui.aceternity.com). Esas librerías solo funcionan en páginas web, así que su look se rehízo con piezas que funcionan igual en web, iOS y Android:

@@ -61,19 +61,28 @@ export type FiltrosCatalogo = {
   categoria?: string | null;
   soloAgotados?: boolean;
   limite?: number;
+  // Cuenta los agotados del local (cuesta una consulta más).
+  contarAgotados?: boolean;
 };
 
 // El catálogo se busca en el servidor: con el inventario de SAP son miles de productos.
 export function useCatalogo(localId: string | null, filtros: FiltrosCatalogo = {}) {
   const api = useApi();
-  const { busqueda = "", categoria = null, soloAgotados = false, limite = 50 } = filtros;
+  const {
+    busqueda = "",
+    categoria = null,
+    soloAgotados = false,
+    limite = 50,
+    contarAgotados = false,
+  } = filtros;
   return useQuery({
-    queryKey: ["catalogo", localId, busqueda.trim(), categoria, soloAgotados, limite],
+    queryKey: ["catalogo", localId, busqueda.trim(), categoria, soloAgotados, limite, contarAgotados],
     queryFn: () => {
       const parametros = new URLSearchParams({ limite: String(limite) });
       if (busqueda.trim()) parametros.set("q", busqueda.trim());
       if (categoria) parametros.set("categoria", categoria);
       if (soloAgotados) parametros.set("agotados", "1");
+      if (contarAgotados) parametros.set("conteo", "1");
       return api<Catalogo>(`/locales/${encodeURIComponent(localId!)}/catalogo?${parametros}`);
     },
     enabled: localId !== null,

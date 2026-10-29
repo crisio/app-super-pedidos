@@ -49,7 +49,8 @@ export type Catalogo = {
   categorias: Categoria[];
   productos: ProductoCatalogo[];
   hayMas: boolean;
-  agotados: number;
+  // Cuántos productos del local están agotados; null si no se pidió el conteo.
+  agotados: number | null;
 };
 
 export type ResumenPedido = {
