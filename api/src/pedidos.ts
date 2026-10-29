@@ -21,7 +21,7 @@ import {
   type ResumenPedido,
   type Usuario,
 } from "@super-pedidos/compartido";
-import { existeLocal } from "./catalogo";
+import { buscarLocal, condicionesDisponibilidad } from "./catalogo";
 import { fallar, leerJson, texto } from "./errores";
 import { requiereSesion, verificarAccesoLocal } from "./sesion";
 import type { Entorno } from "./tipos";
@@ -139,7 +139,13 @@ type ResultadoLineas = { ok: true; lineas: LineaValidada[] } | { ok: false; erro
 
 // Valida las líneas contra el catálogo y la disponibilidad del local.
 // Los precios siempre salen de la base de datos, nunca del cliente.
-async function validarLineas(db: D1Database, localId: string, valor: unknown): Promise<ResultadoLineas> {
+async function validarLineas(
+  db: D1Database,
+  local: { id: string; inventario_sap: number },
+  valor: unknown,
+): Promise<ResultadoLineas> {
+  const localId = local.id;
+  const { disponible } = condicionesDisponibilidad(local);
   if (!Array.isArray(valor) || valor.length === 0) {
     return { ok: false, error: "Agrega al menos un producto." };
   }
@@ -163,7 +169,7 @@ async function validarLineas(db: D1Database, localId: string, valor: unknown): P
     consultas.push(
       db
         .prepare(
-          `SELECT p.id, p.nombre, p.unidad, p.precio_centavos, COALESCE(d.disponible, 1) AS disponible
+          `SELECT p.id, p.nombre, p.unidad, p.precio_centavos, ${disponible} AS disponible
              FROM productos p
              LEFT JOIN disponibilidad d ON d.producto_id = p.id AND d.local_id = ?
             WHERE p.activo = 1 AND p.id IN (${bloque.map(() => "?").join(", ")})`,
@@ -183,10 +189,13 @@ async function validarLineas(db: D1Database, localId: string, valor: unknown): P
   const porId = new Map(resultados.flatMap((r) => r.results).map((fila) => [fila.id, fila]));
   const lineas: LineaValidada[] = [];
   const agotados: string[] = [];
+  const sinPrecio: string[] = [];
   for (const [productoId, cantidad] of cantidades) {
     const producto = porId.get(productoId);
     if (!producto) return { ok: false, error: "Uno de los productos ya no existe en el catálogo." };
     if (producto.disponible !== 1) agotados.push(producto.nombre);
+    // Los productos importados de SAP sin precio no se pueden vender hasta cargarlo.
+    if (producto.precio_centavos <= 0) sinPrecio.push(producto.nombre);
     if (cantidad > MAX_CANTIDAD_POR_PRODUCTO) {
       return { ok: false, error: `Máximo ${MAX_CANTIDAD_POR_PRODUCTO} unidades de ${producto.nombre}.` };
     }
@@ -200,6 +209,9 @@ async function validarLineas(db: D1Database, localId: string, valor: unknown): P
   }
   if (agotados.length > 0) {
     return { ok: false, error: `Agotado en este local: ${agotados.join(", ")}.` };
+  }
+  if (sinPrecio.length > 0) {
+    return { ok: false, error: `Sin precio cargado: ${sinPrecio.join(", ")}.` };
   }
   return { ok: true, lineas };
 }
@@ -258,7 +270,8 @@ export const rutasPedidos = new Hono<Entorno>()
     const { canal, entrega, pago } = cuerpo;
 
     const campos: Record<string, string> = {};
-    if (!localId || !(await existeLocal(db, localId))) campos.localId = "Elige el local.";
+    const local = localId ? await buscarLocal(db, localId) : null;
+    if (!local) campos.localId = "Elige el local.";
     if (!esCanal(canal) || !canalesDeCaptura.includes(canal))
       campos.canal = "Elige por dónde llegó el pedido.";
     if (clienteNombre.length < 2) campos.clienteNombre = "Escribe el nombre del cliente.";
@@ -272,7 +285,7 @@ export const rutasPedidos = new Hono<Entorno>()
     if (!esPago(pago)) campos.pago = "Elige el método de pago.";
 
     if (localId) verificarAccesoLocal(usuario, localId);
-    const validacion = campos.localId ? null : await validarLineas(db, localId, cuerpo.lineas);
+    const validacion = local ? await validarLineas(db, local, cuerpo.lineas) : null;
     if (validacion && !validacion.ok) campos.lineas = validacion.error;
 
     if (Object.keys(campos).length > 0 || !validacion?.ok) {

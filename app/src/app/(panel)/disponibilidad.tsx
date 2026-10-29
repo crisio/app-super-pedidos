@@ -15,13 +15,13 @@ import {
   Vacio,
 } from "@/components/ui";
 import { mensajeDeError } from "@/lib/api";
-import { useCambiarDisponibilidad, useCatalogo, useLocales } from "@/lib/consultas";
+import { useCambiarDisponibilidad, useCatalogo, useLocales, useValorPausado } from "@/lib/consultas";
 import { useUsuario } from "@/lib/sesion";
 import { colores } from "@/tema";
 
-function normalizar(texto: string) {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-}
+const RESULTADOS_POR_PAGINA = 100;
+// Con los grupos de artículos de SAP pueden ser cientos: entonces se busca en vez de filtrar.
+const MAX_CATEGORIAS_EN_FILTRO = 25;
 
 export default function Disponibilidad() {
   const usuario = useUsuario();
@@ -33,18 +33,15 @@ export default function Disponibilidad() {
   const [categoria, setCategoria] = useState<string | null>(null);
   const [soloAgotados, setSoloAgotados] = useState(false);
 
-  const catalogo = useCatalogo(localId);
+  const catalogo = useCatalogo(localId, {
+    busqueda: useValorPausado(busqueda),
+    categoria,
+    soloAgotados,
+    limite: RESULTADOS_POR_PAGINA,
+  });
   const cambiar = useCambiarDisponibilidad(localId);
-
   const productos = catalogo.data?.productos ?? [];
-  const agotados = productos.filter((producto) => !producto.disponible).length;
-  const termino = normalizar(busqueda);
-  const visibles = productos.filter(
-    (producto) =>
-      (!soloAgotados || !producto.disponible) &&
-      (categoria === null || producto.categoriaId === categoria) &&
-      (!termino || normalizar(producto.nombre).includes(termino) || producto.sku.toLowerCase() === termino),
-  );
+  const categorias = catalogo.data?.categorias ?? [];
 
   return (
     <Pantalla>
@@ -57,49 +54,55 @@ export default function Disponibilidad() {
         <SelectorLocal locales={locales.data} valor={localId} onCambiar={setLocalElegido} />
       )}
 
+      {/* El buscador queda fuera de los estados de carga para no perder el foco al escribir. */}
+      <Campo
+        etiqueta="Buscar producto"
+        value={busqueda}
+        onChangeText={setBusqueda}
+        placeholder="Nombre, SKU o código de barras"
+        autoCorrect={false}
+      />
+
       {catalogo.isPending ? (
         <Cargando />
       ) : catalogo.isError ? (
         <MensajeError mensaje={mensajeDeError(catalogo.error)} />
       ) : (
         <>
-          <Campo
-            etiqueta="Buscar producto"
-            value={busqueda}
-            onChangeText={setBusqueda}
-            placeholder="Nombre o SKU"
-            autoCorrect={false}
-          />
           <FilaChips>
             <Chip
               etiqueta="Solo agotados"
-              conteo={agotados}
+              conteo={catalogo.data.agotados}
               activo={soloAgotados}
               onPress={() => setSoloAgotados(!soloAgotados)}
             />
-            <Chip
-              etiqueta="Todas las categorías"
-              activo={categoria === null}
-              onPress={() => setCategoria(null)}
-            />
-            {catalogo.data.categorias.map((item) => (
-              <Chip
-                key={item.id}
-                etiqueta={item.nombre}
-                activo={categoria === item.id}
-                onPress={() => setCategoria(item.id)}
-              />
-            ))}
+            {categorias.length <= MAX_CATEGORIAS_EN_FILTRO && (
+              <>
+                <Chip
+                  etiqueta="Todas las categorías"
+                  activo={categoria === null}
+                  onPress={() => setCategoria(null)}
+                />
+                {categorias.map((item) => (
+                  <Chip
+                    key={item.id}
+                    etiqueta={item.nombre}
+                    activo={categoria === item.id}
+                    onPress={() => setCategoria(item.id)}
+                  />
+                ))}
+              </>
+            )}
           </FilaChips>
           {cambiar.isError ? <MensajeError mensaje={mensajeDeError(cambiar.error)} /> : null}
-          {visibles.length === 0 ? (
+          {productos.length === 0 ? (
             <Vacio
               icono={<PackageCheck size={22} color={colores.tenue} />}
               titulo={soloAgotados ? "No hay productos agotados" : "No hay productos con ese filtro"}
             />
           ) : (
             <View className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
-              {visibles.map((producto, indice) => (
+              {productos.map((producto, indice) => (
                 <FilaDisponibilidad
                   key={producto.id}
                   producto={producto}
@@ -108,6 +111,11 @@ export default function Disponibilidad() {
                 />
               ))}
             </View>
+          )}
+          {catalogo.data.hayMas && (
+            <Text className="text-xs text-zinc-500">
+              Mostrando los primeros {RESULTADOS_POR_PAGINA}. Busca para encontrar más.
+            </Text>
           )}
         </>
       )}
@@ -135,7 +143,9 @@ function FilaDisponibilidad({
           {producto.nombre}
         </Text>
         <Text className="text-xs text-zinc-500">
-          {producto.sku} · {producto.unidad} · {formatearLempiras(producto.precioCentavos)}
+          {producto.sku} · {producto.unidad} ·{" "}
+          {producto.precioCentavos > 0 ? formatearLempiras(producto.precioCentavos) : "sin precio"}
+          {producto.existencias !== null ? ` · ${producto.existencias} en existencia` : ""}
         </Text>
       </View>
       <Insignia

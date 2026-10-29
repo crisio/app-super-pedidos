@@ -52,3 +52,8 @@ INSERT INTO disponibilidad (local_id, producto_id, disponible, actualizado_en) V
   ('norte', 'tilapia', 0, '2026-10-23T00:00:00.000Z'),
   ('norte', 'croissant', 0, '2026-10-23T00:00:00.000Z'),
   ('sur', 'aguacate', 0, '2026-10-23T00:00:00.000Z');
+
+-- Nombre para búsquedas (minúsculas y sin tildes).
+UPDATE productos SET nombre_busqueda =
+  replace(replace(replace(replace(replace(replace(replace(lower(nombre),
+    'á', 'a'), 'é', 'e'), 'í', 'i'), 'ó', 'o'), 'ú', 'u'), 'ü', 'u'), 'ñ', 'n');

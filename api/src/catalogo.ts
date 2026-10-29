@@ -1,8 +1,11 @@
 import { Hono } from "hono";
-import type { Catalogo, Categoria, Local } from "@super-pedidos/compartido";
+import { normalizarBusqueda, type Catalogo, type Categoria, type Local } from "@super-pedidos/compartido";
 import { fallar, leerJson } from "./errores";
 import { requiereSesion, verificarAccesoLocal } from "./sesion";
 import type { Entorno } from "./tipos";
+
+const LIMITE_POR_DEFECTO = 50;
+const LIMITE_MAXIMO = 200;
 
 type FilaProducto = {
   id: string;
@@ -13,11 +16,35 @@ type FilaProducto = {
   unidad: string;
   precio_centavos: number;
   disponible: number;
+  existencias: number | null;
 };
 
+type FilaLocal = { id: string; inventario_sap: number };
+
+export async function buscarLocal(db: D1Database, localId: string) {
+  return db
+    .prepare("SELECT id, inventario_sap FROM locales WHERE id = ? AND activo = 1")
+    .bind(localId)
+    .first<FilaLocal>();
+}
+
 export async function existeLocal(db: D1Database, localId: string) {
-  const fila = await db.prepare("SELECT 1 FROM locales WHERE id = ? AND activo = 1").bind(localId).first();
-  return fila !== null;
+  return (await buscarLocal(db, localId)) !== null;
+}
+
+// Condiciones de disponibilidad de un local. En los locales con inventario de SAP
+// solo existe lo que vino en el archivo: un producto sin fila no se vende ahí.
+// En los demás, un producto sin fila está disponible.
+export function condicionesDisponibilidad(local: FilaLocal) {
+  const deSap = local.inventario_sap === 1;
+  return {
+    disponible: deSap ? "COALESCE(d.disponible, 0)" : "COALESCE(d.disponible, 1)",
+    loManeja: deSap ? "d.producto_id IS NOT NULL" : "1 = 1",
+  };
+}
+
+function escaparLike(texto: string) {
+  return texto.replace(/[\\%_]/g, (caracter) => `\\${caracter}`);
 }
 
 // Montadas en /locales.
@@ -25,31 +52,66 @@ export const rutasCatalogo = new Hono<Entorno>()
   .use(requiereSesion)
   .get("/", async (c) => {
     const { results } = await c.env.DB.prepare(
-      "SELECT id, nombre, direccion, telefono FROM locales WHERE activo = 1 ORDER BY nombre",
+      `SELECT id, nombre, direccion, telefono, codigo_sap AS codigoSap
+         FROM locales WHERE activo = 1 ORDER BY nombre`,
     ).all<Local>();
     return c.json(results);
   })
-  // Catálogo con la disponibilidad de un local.
+  // Búsqueda en el catálogo de un local:
+  // ?q= texto, SKU o código de barras · ?categoria= · ?agotados=1 · ?limite=
   .get("/:localId/catalogo", async (c) => {
     const localId = c.req.param("localId");
     verificarAccesoLocal(c.get("usuario"), localId);
-    if (!(await existeLocal(c.env.DB, localId))) throw fallar(404, "Ese local no existe.");
+    const local = await buscarLocal(c.env.DB, localId);
+    if (!local) throw fallar(404, "Ese local no existe.");
 
-    const [categorias, productos] = await c.env.DB.batch([
-      c.env.DB.prepare("SELECT id, nombre FROM categorias ORDER BY orden, nombre"),
+    const { disponible, loManeja } = condicionesDisponibilidad(local);
+    const condiciones = ["p.activo = 1", loManeja];
+    const parametros: unknown[] = [localId];
+
+    const busqueda = (c.req.query("q") ?? "").trim().slice(0, 100);
+    if (busqueda) {
+      const palabras = normalizarBusqueda(busqueda).split(" ").filter(Boolean).slice(0, 5);
+      const porNombre = palabras.map(() => "p.nombre_busqueda LIKE ? ESCAPE '\\'").join(" AND ");
+      condiciones.push(`((${porNombre || "0"}) OR p.sku = ? OR p.codigo_barras = ?)`);
+      parametros.push(...palabras.map((palabra) => `%${escaparLike(palabra)}%`), busqueda, busqueda);
+    }
+    const categoria = c.req.query("categoria");
+    if (categoria) {
+      condiciones.push("p.categoria_id = ?");
+      parametros.push(categoria);
+    }
+    if (c.req.query("agotados") === "1") condiciones.push(`${disponible} = 0`);
+
+    const limitePedido = Number(c.req.query("limite"));
+    const limite = Number.isInteger(limitePedido)
+      ? Math.min(Math.max(limitePedido, 1), LIMITE_MAXIMO)
+      : LIMITE_POR_DEFECTO;
+
+    const desde = `FROM productos p LEFT JOIN disponibilidad d ON d.producto_id = p.id AND d.local_id = ?`;
+    const [categorias, productos, agotados] = await c.env.DB.batch([
+      c.env.DB.prepare(
+        `SELECT id, nombre FROM categorias c
+          WHERE EXISTS (SELECT 1 FROM productos WHERE categoria_id = c.id AND activo = 1)
+          ORDER BY orden, nombre`,
+      ),
       c.env.DB.prepare(
         `SELECT p.id, p.sku, p.codigo_barras, p.nombre, p.categoria_id, p.unidad, p.precio_centavos,
-                COALESCE(d.disponible, 1) AS disponible
-           FROM productos p
-           LEFT JOIN disponibilidad d ON d.producto_id = p.id AND d.local_id = ?
-          WHERE p.activo = 1
-          ORDER BY p.nombre`,
+                ${disponible} AS disponible, d.existencias
+           ${desde}
+          WHERE ${condiciones.join(" AND ")}
+          ORDER BY p.nombre
+          LIMIT ?`,
+      ).bind(...parametros, limite + 1),
+      c.env.DB.prepare(
+        `SELECT COUNT(*) AS total ${desde} WHERE p.activo = 1 AND ${loManeja} AND ${disponible} = 0`,
       ).bind(localId),
     ]);
 
+    const filas = productos.results as FilaProducto[];
     const catalogo: Catalogo = {
       categorias: categorias.results as Categoria[],
-      productos: (productos.results as FilaProducto[]).map((fila) => ({
+      productos: filas.slice(0, limite).map((fila) => ({
         id: fila.id,
         sku: fila.sku,
         codigoBarras: fila.codigo_barras,
@@ -58,7 +120,10 @@ export const rutasCatalogo = new Hono<Entorno>()
         unidad: fila.unidad,
         precioCentavos: fila.precio_centavos,
         disponible: fila.disponible === 1,
+        existencias: fila.existencias,
       })),
+      hayMas: filas.length > limite,
+      agotados: (agotados.results[0] as { total: number }).total,
     };
     return c.json(catalogo);
   })

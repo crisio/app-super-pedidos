@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import type {
   Catalogo,
   DetallePedido,
@@ -45,12 +46,38 @@ export function usePedido(id: string) {
   });
 }
 
-export function useCatalogo(localId: string | null) {
+// Valor que solo cambia cuando se deja de escribir, para no buscar en cada tecla.
+export function useValorPausado<T>(valor: T, esperaMs = 300) {
+  const [pausado, setPausado] = useState(valor);
+  useEffect(() => {
+    const id = setTimeout(() => setPausado(valor), esperaMs);
+    return () => clearTimeout(id);
+  }, [valor, esperaMs]);
+  return pausado;
+}
+
+export type FiltrosCatalogo = {
+  busqueda?: string;
+  categoria?: string | null;
+  soloAgotados?: boolean;
+  limite?: number;
+};
+
+// El catálogo se busca en el servidor: con el inventario de SAP son miles de productos.
+export function useCatalogo(localId: string | null, filtros: FiltrosCatalogo = {}) {
   const api = useApi();
+  const { busqueda = "", categoria = null, soloAgotados = false, limite = 50 } = filtros;
   return useQuery({
-    queryKey: ["catalogo", localId],
-    queryFn: () => api<Catalogo>(`/locales/${encodeURIComponent(localId!)}/catalogo`),
+    queryKey: ["catalogo", localId, busqueda.trim(), categoria, soloAgotados, limite],
+    queryFn: () => {
+      const parametros = new URLSearchParams({ limite: String(limite) });
+      if (busqueda.trim()) parametros.set("q", busqueda.trim());
+      if (categoria) parametros.set("categoria", categoria);
+      if (soloAgotados) parametros.set("agotados", "1");
+      return api<Catalogo>(`/locales/${encodeURIComponent(localId!)}/catalogo?${parametros}`);
+    },
     enabled: localId !== null,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -92,6 +119,7 @@ export function useCambiarEstado(id: string) {
 export function useCambiarDisponibilidad(localId: string | null) {
   const api = useApi();
   const clienteConsultas = useQueryClient();
+  // Todas las búsquedas del catálogo de este local.
   const clave = ["catalogo", localId];
   return useMutation({
     mutationFn: ({ productoId, disponible }: { productoId: string; disponible: boolean }) =>
@@ -105,9 +133,9 @@ export function useCambiarDisponibilidad(localId: string | null) {
     // Se refleja al instante y se revierte si falla.
     onMutate: async ({ productoId, disponible }) => {
       await clienteConsultas.cancelQueries({ queryKey: clave });
-      const anterior = clienteConsultas.getQueryData<Catalogo>(clave);
-      clienteConsultas.setQueryData<Catalogo>(
-        clave,
+      const anteriores = clienteConsultas.getQueriesData<Catalogo>({ queryKey: clave });
+      clienteConsultas.setQueriesData<Catalogo>(
+        { queryKey: clave },
         (actual) =>
           actual && {
             ...actual,
@@ -116,10 +144,12 @@ export function useCambiarDisponibilidad(localId: string | null) {
             ),
           },
       );
-      return { anterior };
+      return { anteriores };
     },
     onError: (_error, _variables, contexto) => {
-      if (contexto?.anterior) clienteConsultas.setQueryData(clave, contexto.anterior);
+      contexto?.anteriores.forEach(([claveConsulta, datos]) =>
+        clienteConsultas.setQueryData(claveConsulta, datos),
+      );
     },
     onSettled: () => clienteConsultas.invalidateQueries({ queryKey: clave }),
   });

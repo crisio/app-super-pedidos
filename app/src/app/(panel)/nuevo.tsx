@@ -32,7 +32,7 @@ import {
   Tarjeta,
 } from "@/components/ui";
 import { ErrorDeApi, mensajeDeError } from "@/lib/api";
-import { useCatalogo, useCrearPedido, useLocales } from "@/lib/consultas";
+import { useCatalogo, useCrearPedido, useLocales, useValorPausado } from "@/lib/consultas";
 import { useUsuario } from "@/lib/sesion";
 import { colores } from "@/tema";
 
@@ -40,10 +40,6 @@ const MAX_RESULTADOS = 40;
 
 function nuevaClave() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
-
-function normalizar(texto: string) {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 
 function Paso({ numero, titulo, children }: { numero: number; titulo: string; children: ReactNode }) {
@@ -81,37 +77,32 @@ export default function NuevoPedido() {
   const [deliveryNombre, setDeliveryNombre] = useState("");
   const [pago, setPago] = useState<Pago>("efectivo");
   const [notas, setNotas] = useState("");
-  const [cantidades, setCantidades] = useState<Record<string, number>>({});
+  // Productos elegidos con su cantidad. Se guardan aparte de la búsqueda, que cambia.
+  const [elegidosPorId, setElegidosPorId] = useState<
+    Record<string, { producto: ProductoCatalogo; cantidad: number }>
+  >({});
   const [busqueda, setBusqueda] = useState("");
   // Una clave por intento: si la red falla y se reintenta, no se duplica el pedido.
   const [claveIdempotencia, setClaveIdempotencia] = useState(nuevaClave);
 
   const locales = useLocales();
-  const catalogo = useCatalogo(localId);
+  const busquedaPausada = useValorPausado(busqueda);
+  const catalogo = useCatalogo(localId, { busqueda: busquedaPausada, limite: MAX_RESULTADOS });
   const crear = useCrearPedido();
   const errores = crear.error instanceof ErrorDeApi ? crear.error.campos : {};
 
-  const productos = catalogo.data?.productos ?? [];
-  const elegidos = productos
-    .filter((producto) => (cantidades[producto.id] ?? 0) > 0)
-    .map((producto) => ({ producto, cantidad: cantidades[producto.id] }));
+  const elegidos = Object.values(elegidosPorId);
   const totales = calcularTotales(
     elegidos.map(({ producto, cantidad }) => ({ precioCentavos: producto.precioCentavos, cantidad })),
     entrega,
   );
-  const termino = normalizar(busqueda);
-  const resultados = productos
-    .filter(
-      (producto) =>
-        !termino || normalizar(producto.nombre).includes(termino) || producto.sku.toLowerCase() === termino,
-    )
-    .slice(0, MAX_RESULTADOS);
+  const resultados = catalogo.data?.productos ?? [];
 
-  function cambiarCantidad(productoId: string, cantidad: number) {
-    setCantidades((actual) => {
+  function cambiarCantidad(producto: ProductoCatalogo, cantidad: number) {
+    setElegidosPorId((actual) => {
       const siguiente = { ...actual };
-      if (cantidad <= 0) delete siguiente[productoId];
-      else siguiente[productoId] = Math.min(cantidad, MAX_CANTIDAD_POR_PRODUCTO);
+      if (cantidad <= 0) delete siguiente[producto.id];
+      else siguiente[producto.id] = { producto, cantidad: Math.min(cantidad, MAX_CANTIDAD_POR_PRODUCTO) };
       return siguiente;
     });
   }
@@ -119,7 +110,7 @@ export default function NuevoPedido() {
   function cambiarLocal(nuevo: string | null) {
     // La disponibilidad cambia por local: se empieza la lista de nuevo.
     setLocalElegido(nuevo);
-    setCantidades({});
+    setElegidosPorId({});
   }
 
   function enviar() {
@@ -147,7 +138,7 @@ export default function NuevoPedido() {
           setDireccion("");
           setDeliveryNombre("");
           setNotas("");
-          setCantidades({});
+          setElegidosPorId({});
           setBusqueda("");
           setClaveIdempotencia(nuevaClave());
           crear.reset();
@@ -261,39 +252,44 @@ export default function NuevoPedido() {
           <Text className="text-sm text-zinc-400">
             Elige primero el local para ver lo que tiene disponible.
           </Text>
-        ) : catalogo.isPending ? (
-          <Cargando />
-        ) : catalogo.isError ? (
-          <MensajeError mensaje={mensajeDeError(catalogo.error)} />
         ) : (
           <>
+            {/* El buscador queda fuera de los estados de carga para no perder el foco al escribir. */}
             <Campo
               etiqueta="Buscar producto"
               value={busqueda}
               onChangeText={setBusqueda}
-              placeholder="Nombre o SKU"
+              placeholder="Nombre, SKU o código de barras"
               autoCorrect={false}
             />
-            <View>
-              {resultados.map((producto) => (
-                <FilaProducto
-                  key={producto.id}
-                  producto={producto}
-                  cantidad={cantidades[producto.id] ?? 0}
-                  onCambiar={(cantidad) => cambiarCantidad(producto.id, cantidad)}
-                />
-              ))}
-            </View>
-            {resultados.length === 0 && (
-              <View className="flex-row items-center gap-2">
-                <Search size={14} color={colores.apagado} />
-                <Text className="text-sm text-zinc-400">No hay productos con ese nombre.</Text>
-              </View>
-            )}
-            {resultados.length === MAX_RESULTADOS && (
-              <Text className="text-xs text-zinc-500">
-                Mostrando los primeros {MAX_RESULTADOS}. Busca para encontrar más.
-              </Text>
+            {catalogo.isPending ? (
+              <Cargando />
+            ) : catalogo.isError ? (
+              <MensajeError mensaje={mensajeDeError(catalogo.error)} />
+            ) : (
+              <>
+                <View>
+                  {resultados.map((producto) => (
+                    <FilaProducto
+                      key={producto.id}
+                      producto={producto}
+                      cantidad={elegidosPorId[producto.id]?.cantidad ?? 0}
+                      onCambiar={(cantidad) => cambiarCantidad(producto, cantidad)}
+                    />
+                  ))}
+                </View>
+                {resultados.length === 0 && (
+                  <View className="flex-row items-center gap-2">
+                    <Search size={14} color={colores.apagado} />
+                    <Text className="text-sm text-zinc-400">No hay productos con ese nombre.</Text>
+                  </View>
+                )}
+                {catalogo.data?.hayMas && (
+                  <Text className="text-xs text-zinc-500">
+                    Mostrando los primeros {MAX_RESULTADOS}. Busca para encontrar más.
+                  </Text>
+                )}
+              </>
             )}
           </>
         )}
@@ -388,11 +384,15 @@ function FilaProducto({
       <View className="flex-1 gap-0.5">
         <Text className="text-[15px] font-medium text-zinc-100">{producto.nombre}</Text>
         <Text className="text-xs text-zinc-500">
-          {producto.unidad} · {formatearLempiras(producto.precioCentavos)}
+          {producto.unidad} ·{" "}
+          {producto.precioCentavos > 0 ? formatearLempiras(producto.precioCentavos) : "sin precio"}
+          {producto.existencias !== null ? ` · ${producto.existencias} en existencia` : ""}
         </Text>
       </View>
       {!producto.disponible ? (
         <Insignia texto="Agotado" tono="rojo" />
+      ) : producto.precioCentavos <= 0 ? (
+        <Insignia texto="Sin precio" tono="gris" />
       ) : cantidad === 0 ? (
         <Boton
           titulo="Agregar"

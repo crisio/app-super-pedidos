@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router/js-tabs";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
-import { ClipboardList, CirclePlus, LogOut, Package } from "@/components/iconos";
+import { ClipboardList, CirclePlus, LogOut, Package, Upload } from "@/components/iconos";
 import { usePedidos } from "@/lib/consultas";
 import { useSesion, useUsuario } from "@/lib/sesion";
 import { colores } from "@/tema";
@@ -96,6 +96,15 @@ export default function PanelLayout() {
         options={{
           title: "Disponibilidad",
           tabBarIcon: ({ color }) => <Package size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="importar"
+        options={{
+          title: "Importar SAP",
+          tabBarIcon: ({ color }) => <Upload size={20} color={color} />,
+          // Solo la central importa el inventario.
+          href: usuario.rol === "central" ? undefined : null,
         }}
       />
     </Tabs>

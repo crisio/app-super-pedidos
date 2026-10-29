@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ErrorApi } from "@super-pedidos/compartido";
 import { rutasCatalogo } from "./catalogo";
+import { rutasImportaciones } from "./importaciones";
 import { rutasPedidos } from "./pedidos";
 import { rutasSesion } from "./sesion";
 import type { Entorno } from "./tipos";
@@ -23,6 +24,7 @@ app.get("/", (c) => c.json({ servicio: "Super Pedidos API", estado: "ok" }));
 app.route("/sesion", rutasSesion);
 app.route("/pedidos", rutasPedidos);
 app.route("/locales", rutasCatalogo);
+app.route("/importaciones", rutasImportaciones);
 
 app.notFound((c) => c.json<ErrorApi>({ error: "Ruta no encontrada." }, 404));
 
