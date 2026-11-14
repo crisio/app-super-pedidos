@@ -1,8 +1,12 @@
 import type { ErrorApi } from "@super-pedidos/compartido";
 
-// En un celular o emulador, "localhost" no es tu computadora: usa la IP de tu red
-// en EXPO_PUBLIC_API_URL (por ejemplo http://192.168.1.20:8787).
-export const URL_API = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8787").replace(/\/$/, "");
+// Sin EXPO_PUBLIC_API_URL, la app compilada (Release) usa la API publicada y la de
+// desarrollo usa la de tu computadora. En un celular, "localhost" no es tu computadora:
+// para probar contra tu API local usa la IP de tu red (por ejemplo http://192.168.1.20:8787).
+const API_PUBLICADA = "https://supercoquin-api.pensolabs.com";
+export const URL_API = (
+  process.env.EXPO_PUBLIC_API_URL ?? (__DEV__ ? "http://localhost:8787" : API_PUBLICADA)
+).replace(/\/$/, "");
 
 export class ErrorDeApi extends Error {
   constructor(

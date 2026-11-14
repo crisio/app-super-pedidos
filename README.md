@@ -34,6 +34,7 @@ La pestaña **Importar SAP** está disponible para usuarios centrales y solo en 
 4. **Importación:** si se corta, se reintenta desde el lote que falló.
 
 Reglas:
+
 - Una sucursal que recibe inventario de SAP solo muestra los productos que vienen en el archivo para su centro. Los que están en cero quedan **agotados**, y los que dejan de venir en una importación posterior también.
 - Un dato que no viene en el archivo no borra el que ya existe. Por ejemplo, una lista de precios con solo "Material" y "Precio" actualiza precios sin tocar lo demás.
 - Los productos sin precio no se pueden vender hasta que se les carga uno.
@@ -67,7 +68,7 @@ compartido/   Estados, canales, reglas de precios y tipos que usan api y app
 
 ## Cómo correrlo en tu computadora
 
-Necesitas Node.js 20 o más reciente.
+Necesitas Node.js 22.13 o más reciente (la versión LTS de nodejs.org).
 
 ```bash
 npm install
@@ -104,15 +105,15 @@ npm run format
 
 ## Ver la app en tu iPhone desde tu Mac
 
-Con Xcode y tu Apple ID normal (gratis) se instala la app nativa en tu propio iPhone. La app que se instala así funciona 7 días; para renovarla, vuelves a correr `npm run iphone`. Para TestFlight o la App Store hace falta la cuenta de Apple Developer (99 dólares al año).
+Con Xcode y tu Apple ID normal (gratis) se instala la app nativa en tu propio iPhone. La app usa la API publicada (https://supercoquin-api.pensolabs.com), así que funciona en cualquier lugar con internet, sin la Mac. Instalada así dura 7 días; para renovarla, vuelve a correr `npm run iphone`. Para TestFlight o la App Store hace falta la cuenta de Apple Developer (99 dólares al año).
 
 **Una sola vez:**
 
 1. Instala **Xcode** desde la App Store, en su versión más reciente. Ábrelo una vez y acepta la licencia.
 2. En Xcode → Settings → Accounts, agrega tu **Apple ID**. Aparece como "Personal Team".
-3. Instala **Node.js** 20 o más reciente desde nodejs.org.
-4. Conecta el iPhone a la Mac con el cable y toca **Confiar**. Luego activa en el iPhone Ajustes → Privacidad y seguridad → **Modo de desarrollador**; el iPhone se reinicia.
-5. La Mac y el iPhone deben estar en la **misma red Wi-Fi**.
+3. Instala **Node.js** en su versión LTS desde nodejs.org (22.13 o más reciente).
+4. Instala **CocoaPods** con [Homebrew](https://brew.sh): `brew install cocoapods`.
+5. Conecta el iPhone a la Mac con el cable y toca **Confiar**. Luego activa en el iPhone Ajustes → Privacidad y seguridad → **Modo de desarrollador**; el iPhone se reinicia.
 
 **En la Terminal de la Mac:**
 
@@ -120,44 +121,43 @@ Con Xcode y tu Apple ID normal (gratis) se instala la app nativa en tu propio iP
 git clone https://github.com/crisio/app-super-pedidos.git
 cd app-super-pedidos
 npm install
+npm run iphone
+```
+
+La primera vez tarda varios minutos: genera el proyecto de Xcode, instala las dependencias nativas y compila. Elige tu iPhone cuando aparezca la lista de dispositivos. Si pide un equipo de firma, elige tu **Personal Team**.
+
+**En el iPhone, la primera vez:** Ajustes → General → VPN y administración de dispositivos → tu Apple ID → **Confiar**. Después abre **Super Pedidos** y entra con un usuario de la base de datos publicada. Para crear otro usuario ahí, agrega `--remoto` a `npm run crear-usuario` (la primera vez pide entrar a Cloudflare con `npx wrangler login`).
+
+**Para actualizarla** con los cambios nuevos: `git pull`, `npm install` y `npm run iphone`.
+
+Si la firma falla desde la Terminal, abre `app/ios/SuperPedidos.xcworkspace` en Xcode, elige tu equipo en Signing & Capabilities, cambia la Build Configuration a **Release** en Product → Scheme → Edit Scheme → Run, y presiona ▶︎ con el iPhone seleccionado.
+
+### Probar contra la API de tu Mac
+
+Para probar cambios de la API antes de publicarlos, la app se conecta a la API que corre en tu Mac. La Mac y el iPhone deben estar en la **misma red Wi-Fi**.
+
+```bash
 npm run local:preparar
 npm run crear-usuario -w @super-pedidos/api -- --usuario admin --nombre "Central" --rol central --clave "una-clave-larga"
 npm run api:red
 ```
 
-`npm run api:red` deja la API corriendo en tu Mac, accesible desde el iPhone; deja esa ventana abierta. Si macOS pregunta si permites conexiones entrantes, acepta.
-
-**En otra ventana de la Terminal:**
-
-```bash
-cd app-super-pedidos
-npm run iphone
-```
-
-La primera vez tarda varios minutos: genera el proyecto de Xcode, instala las dependencias nativas (si pregunta por CocoaPods, acepta instalarlo) y compila. Elige tu iPhone cuando aparezca la lista de dispositivos. Si pide un equipo de firma, elige tu **Personal Team**.
-
-**En el iPhone, la primera vez:**
-
-- Ajustes → General → VPN y administración de dispositivos → tu Apple ID → **Confiar**.
-- Al abrir la app, permite que busque dispositivos en la **red local**.
-
-Entra con el usuario `admin` y la clave que pusiste. Para ver tu inventario en la app, impórtalo antes de compilar: corre `npm run app`, abre http://localhost:8081 en el navegador de la Mac, entra a **Importar SAP**, y luego cierra con Ctrl+C antes de `npm run iphone`.
-
-Si la firma falla desde la Terminal, abre `app/ios/SuperPedidos.xcworkspace` en Xcode, elige tu equipo en Signing & Capabilities y presiona ▶︎ con el iPhone seleccionado.
+Deja esa ventana abierta y, en otra, corre `npm run iphone:local`. Si macOS pregunta si permites conexiones entrantes, acepta. Esta versión carga el código desde la Mac, así que solo abre con la Mac encendida y en la misma red; la primera vez, permite que la app busque dispositivos en la **red local**.
 
 ## Publicar
 
 Todo se publica solo desde GitHub Actions (`.github/workflows/publicar.yml`) cada vez que hay cambios en `main`:
 
-| Pieza | Dónde vive | Dirección |
-|---|---|---|
-| App web | GitHub Pages | https://supercoquin.pensolabs.com |
-| API | Cloudflare Workers | https://supercoquin-api.pensolabs.com |
-| Base de datos | Cloudflare D1 (`super-pedidos`) | — |
+| Pieza         | Dónde vive                      | Dirección                             |
+| ------------- | ------------------------------- | ------------------------------------- |
+| App web       | GitHub Pages                    | https://supercoquin.pensolabs.com     |
+| API           | Cloudflare Workers              | https://supercoquin-api.pensolabs.com |
+| Base de datos | Cloudflare D1 (`super-pedidos`) | —                                     |
 
 GitHub Pages solo sirve archivos estáticos, así que la API sigue corriendo en Cloudflare Workers, aunque se publica desde GitHub. En pull requests el flujo solo revisa el código (tipos, lint y formato).
 
 En cada publicación, el flujo:
+
 1. Aplica las migraciones nuevas de `api/migrations/` a la base de datos.
 2. Publica la API. Cloudflare crea solo el subdominio de la API y su certificado.
 3. Crea o corrige en Cloudflare el subdominio `supercoquin` (un CNAME hacia `crisio.github.io`, sin proxy), con el script `.github/scripts/subdominio.sh`.
@@ -174,6 +174,7 @@ En cada publicación, el flujo:
    - Zone · Workers Routes · Edit
 
    En "Zone Resources" elige `pensolabs.com`.
+
 2. **Secrets en GitHub** (Settings → Secrets and variables → Actions → New repository secret):
    - `CLOUDFLARE_API_TOKEN`: el token del paso anterior.
    - `CLOUDFLARE_ACCOUNT_ID`: el ID de la cuenta de Cloudflare.

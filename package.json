@@ -15,7 +15,8 @@
     "format:check": "prettier --check \"app/src/**/*.{ts,tsx}\" \"api/src/**/*.ts\" \"api/scripts/*.ts\" \"compartido/src/**/*.ts\"",
     "api:red": "npm run dev:red -w @super-pedidos/api",
     "iphone": "npm run iphone -w @super-pedidos/app",
-    "local:preparar": "npm run db:migrar:local -w @super-pedidos/api && npm run db:demo:local -w @super-pedidos/api"
+    "local:preparar": "npm run db:migrar:local -w @super-pedidos/api && npm run db:demo:local -w @super-pedidos/api",
+    "iphone:local": "npm run iphone:local -w @super-pedidos/app"
   },
   "devDependencies": {
     "prettier": "^3.8.1"
