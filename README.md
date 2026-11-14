@@ -151,8 +151,8 @@ Todo se publica solo desde GitHub Actions (`.github/workflows/publicar.yml`) cad
 
 | Pieza | Dónde vive | Dirección |
 |---|---|---|
-| App web | GitHub Pages | https://supercoquin.christopherpineda.com |
-| API | Cloudflare Workers | https://supercoquin-api.christopherpineda.com |
+| App web | GitHub Pages | https://supercoquin.pensolabs.com |
+| API | Cloudflare Workers | https://supercoquin-api.pensolabs.com |
 | Base de datos | Cloudflare D1 (`super-pedidos`) | — |
 
 GitHub Pages solo sirve archivos estáticos, así que la API sigue corriendo en Cloudflare Workers, aunque se publica desde GitHub. En pull requests el flujo solo revisa el código (tipos, lint y formato).
@@ -173,13 +173,13 @@ En cada publicación, el flujo:
    - Zone · DNS · Edit
    - Zone · Workers Routes · Edit
 
-   En "Zone Resources" elige `christopherpineda.com`.
+   En "Zone Resources" elige `pensolabs.com`.
 2. **Secrets en GitHub** (Settings → Secrets and variables → Actions → New repository secret):
    - `CLOUDFLARE_API_TOKEN`: el token del paso anterior.
    - `CLOUDFLARE_ACCOUNT_ID`: el ID de la cuenta de Cloudflare.
 3. **GitHub Pages:** en Settings → Pages → Build and deployment, elige **GitHub Actions** como fuente.
 4. Corre el flujo **Publicar** (Actions → Publicar → Run workflow) o sube un cambio a `main`.
-5. Después de la primera publicación, en Settings → Pages → Custom domain, escribe `supercoquin.christopherpineda.com` y guarda. Cuando GitHub termine de verificarlo, activa **Enforce HTTPS**.
+5. Después de la primera publicación, en Settings → Pages → Custom domain, escribe `supercoquin.pensolabs.com` y guarda. Cuando GitHub termine de verificarlo, activa **Enforce HTTPS**.
 
 La app solo funciona en el subdominio, no en `crisio.github.io/app-super-pedidos`.
 
@@ -187,7 +187,7 @@ Nunca subas claves al código: el repositorio es público. Todo lo secreto va en
 
 ### iOS y Android
 
-Se compilan en la nube con EAS (`npx eas-cli@latest build`), con `EXPO_PUBLIC_API_URL=https://supercoquin-api.christopherpineda.com`. Necesitas una cuenta de Expo, y cuentas de desarrollador de Apple y Google para publicar en las tiendas.
+Se compilan en la nube con EAS (`npx eas-cli@latest build`), con `EXPO_PUBLIC_API_URL=https://supercoquin-api.pensolabs.com`. Necesitas una cuenta de Expo, y cuentas de desarrollador de Apple y Google para publicar en las tiendas.
 
 ## Próximas fases
 

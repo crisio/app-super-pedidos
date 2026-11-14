@@ -2,7 +2,7 @@
 # Crea o actualiza en Cloudflare el subdominio de la app web, apuntando a GitHub Pages.
 #
 #   subdominio.sh <zona> <subdominio completo> <destino>
-#   subdominio.sh christopherpineda.com supercoquin.christopherpineda.com crisio.github.io
+#   subdominio.sh pensolabs.com supercoquin.pensolabs.com crisio.github.io
 #
 # Necesita CLOUDFLARE_API_TOKEN con permisos "Zone: Read" y "DNS: Edit" sobre la zona.
 set -euo pipefail
