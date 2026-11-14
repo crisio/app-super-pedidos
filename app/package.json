@@ -47,7 +47,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
-    "iphone": "EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-https://supercoquin-api.pensolabs.com} expo run:ios --device --configuration Release",
+    "iphone": "EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-https://supercoquin-api.pensolabs.com} expo run:ios --device --configuration Release --no-bundler",
     "iphone:local": "EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0 || ipconfig getifaddr en1):8787 expo run:ios --device"
   },
   "private": true
