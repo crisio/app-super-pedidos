@@ -102,6 +102,49 @@ npm run lint
 npm run format
 ```
 
+## Ver la app en tu iPhone desde tu Mac
+
+Con Xcode y tu Apple ID normal (gratis) se instala la app nativa en tu propio iPhone. La app que se instala así funciona 7 días; para renovarla, vuelves a correr `npm run iphone`. Para TestFlight o la App Store hace falta la cuenta de Apple Developer (99 dólares al año).
+
+**Una sola vez:**
+
+1. Instala **Xcode** desde la App Store, en su versión más reciente. Ábrelo una vez y acepta la licencia.
+2. En Xcode → Settings → Accounts, agrega tu **Apple ID**. Aparece como "Personal Team".
+3. Instala **Node.js** 20 o más reciente desde nodejs.org.
+4. Conecta el iPhone a la Mac con el cable y toca **Confiar**. Luego activa en el iPhone Ajustes → Privacidad y seguridad → **Modo de desarrollador**; el iPhone se reinicia.
+5. La Mac y el iPhone deben estar en la **misma red Wi-Fi**.
+
+**En la Terminal de la Mac:**
+
+```bash
+git clone https://github.com/crisio/app-super-pedidos.git
+cd app-super-pedidos
+npm install
+npm run local:preparar
+npm run crear-usuario -w @super-pedidos/api -- --usuario admin --nombre "Central" --rol central --clave "una-clave-larga"
+npm run api:red
+```
+
+`npm run api:red` deja la API corriendo en tu Mac, accesible desde el iPhone; deja esa ventana abierta. Si macOS pregunta si permites conexiones entrantes, acepta.
+
+**En otra ventana de la Terminal:**
+
+```bash
+cd app-super-pedidos
+npm run iphone
+```
+
+La primera vez tarda varios minutos: genera el proyecto de Xcode, instala las dependencias nativas (si pregunta por CocoaPods, acepta instalarlo) y compila. Elige tu iPhone cuando aparezca la lista de dispositivos. Si pide un equipo de firma, elige tu **Personal Team**.
+
+**En el iPhone, la primera vez:**
+
+- Ajustes → General → VPN y administración de dispositivos → tu Apple ID → **Confiar**.
+- Al abrir la app, permite que busque dispositivos en la **red local**.
+
+Entra con el usuario `admin` y la clave que pusiste. Para ver tu inventario en la app, impórtalo antes de compilar: corre `npm run app`, abre http://localhost:8081 en el navegador de la Mac, entra a **Importar SAP**, y luego cierra con Ctrl+C antes de `npm run iphone`.
+
+Si la firma falla desde la Terminal, abre `app/ios/SuperPedidos.xcworkspace` en Xcode, elige tu equipo en Signing & Capabilities y presiona ▶︎ con el iPhone seleccionado.
+
 ## Publicar
 
 Todo se publica solo desde GitHub Actions (`.github/workflows/publicar.yml`) cada vez que hay cambios en `main`:

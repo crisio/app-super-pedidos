@@ -10,7 +10,8 @@
     "db:migrar:remoto": "wrangler d1 migrations apply super-pedidos --remote",
     "db:demo:local": "wrangler d1 execute super-pedidos --local --file semillas/demo.sql",
     "crear-usuario": "tsx scripts/crear-usuario.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
+    "dev:red": "wrangler dev --ip 0.0.0.0"
   },
   "dependencies": {
     "@super-pedidos/compartido": "*",
