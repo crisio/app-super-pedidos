@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo/ui": "~58.0.28",
     "@super-pedidos/compartido": "*",
     "@tanstack/react-query": "^5.104.5",
     "expo": "~58.0.17",
     "expo-constants": "~58.0.13",
     "expo-font": "~58.0.9",
+    "expo-glass-effect": "~58.0.5",
+    "expo-haptics": "~58.0.8",
     "expo-image": "~58.0.16",
     "expo-linear-gradient": "~58.0.3",
     "expo-linking": "~58.0.14",
@@ -15,6 +18,7 @@
     "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.11",
     "expo-status-bar": "~58.0.4",
+    "expo-symbols": "~58.0.5",
     "expo-system-ui": "~58.0.6",
     "lucide-react-native": "^1.61.0",
     "nativewind": "^4.2.7",
@@ -47,8 +51,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
-    "iphone": "EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-https://supercoquin-api.pensolabs.com} expo run:ios --device --configuration Release --no-bundler",
-    "iphone:local": "EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0 || ipconfig getifaddr en1):8787 expo run:ios --device"
+    "iphone": "npm run ios:preparar && EXPO_PUBLIC_API_URL=${EXPO_PUBLIC_API_URL:-https://supercoquin-api.pensolabs.com} expo run:ios --device --configuration Release --no-bundler",
+    "iphone:local": "npm run ios:preparar && EXPO_PUBLIC_API_URL=http://$(ipconfig getifaddr en0 || ipconfig getifaddr en1):8787 expo run:ios --device",
+    "ios:preparar": "EXPO_NO_GIT_STATUS=1 expo prebuild --platform ios --clean"
   },
   "private": true
 }

@@ -17,6 +17,11 @@ export type Sesion = {
   usuario: Usuario;
 };
 
+// Entrar con un código de 6 dígitos que llega por correo:
+// POST /sesion/codigo con PedirCodigo, y luego POST /sesion/codigo/verificar con VerificarCodigo.
+export type PedirCodigo = { correo: string };
+export type VerificarCodigo = { correo: string; codigo: string };
+
 export type Local = {
   id: string;
   nombre: string;

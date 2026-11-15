@@ -4,14 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --var CODIGOS_EN_CONSOLA:1",
     "deploy": "wrangler deploy",
     "db:migrar:local": "wrangler d1 migrations apply super-pedidos --local",
     "db:migrar:remoto": "wrangler d1 migrations apply super-pedidos --remote",
     "db:demo:local": "wrangler d1 execute super-pedidos --local --file semillas/demo.sql",
     "crear-usuario": "tsx scripts/crear-usuario.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p scripts",
-    "dev:red": "wrangler dev --ip 0.0.0.0"
+    "dev:red": "wrangler dev --ip 0.0.0.0 --var CODIGOS_EN_CONSOLA:1",
+    "correo-usuario": "tsx scripts/correo-usuario.ts"
   },
   "dependencies": {
     "@super-pedidos/compartido": "*",

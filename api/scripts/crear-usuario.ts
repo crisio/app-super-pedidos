@@ -1,13 +1,14 @@
-// Crea un usuario del panel (central o de un local).
+// Crea un usuario del panel (central o de un local). Entra con el código que le llega
+// a su correo, con su contraseña, o con ambos.
 //
 //   npm run crear-usuario -w @super-pedidos/api -- \
-//     --usuario ana --nombre "Ana López" --rol local --local centro --clave "una-clave-larga" [--remoto]
+//     --usuario ana --nombre "Ana López" --rol local --local centro --correo ana@ejemplo.com [--clave "una-clave-larga"] [--remoto]
 //
 // Sin --remoto se crea en la base de datos local de desarrollo.
 
-import { spawnSync } from "node:child_process";
 import { parseArgs } from "node:util";
 import { hashearClave } from "../src/claves";
+import { CORREO_VALIDO, ejecutar, salir, sql } from "./d1";
 
 const { values } = parseArgs({
   options: {
@@ -15,18 +16,15 @@ const { values } = parseArgs({
     nombre: { type: "string" },
     rol: { type: "string" },
     local: { type: "string" },
+    correo: { type: "string" },
     clave: { type: "string" },
     remoto: { type: "boolean", default: false },
   },
 });
 
-function salir(mensaje: string): never {
-  console.error(mensaje);
-  process.exit(1);
-}
-
 const usuario = values.usuario?.trim().toLowerCase();
 const nombre = values.nombre?.trim();
+const correo = values.correo?.trim().toLowerCase() || null;
 const { rol, local, clave } = values;
 
 if (!usuario || !/^[a-z0-9._-]{3,40}$/.test(usuario)) {
@@ -35,30 +33,20 @@ if (!usuario || !/^[a-z0-9._-]{3,40}$/.test(usuario)) {
 if (!nombre) salir("--nombre es obligatorio.");
 if (rol !== "central" && rol !== "local") salir('--rol debe ser "central" o "local".');
 if (rol === "local" && !local) salir("--local es obligatorio para usuarios de un local.");
-if (!clave || clave.length < 8) salir("--clave es obligatoria y debe tener al menos 8 caracteres.");
+if (!correo && !clave) salir("Pon --correo, --clave o ambos: es como va a entrar.");
+if (correo && !CORREO_VALIDO.test(correo)) salir("--correo no es un correo válido.");
+if (clave !== undefined && clave.length < 8) salir("--clave debe tener al menos 8 caracteres.");
 
-const sql = (valor: string | null) => (valor === null ? "NULL" : `'${valor.replace(/'/g, "''")}'`);
-const comando = `INSERT INTO usuarios (id, nombre, usuario, clave_hash, rol, local_id) VALUES (${[
+// Sin contraseña, clave_hash queda vacío y solo se puede entrar con el código por correo.
+const comando = `INSERT INTO usuarios (id, nombre, usuario, correo, clave_hash, rol, local_id) VALUES (${[
   sql(crypto.randomUUID()),
   sql(nombre),
   sql(usuario),
-  sql(await hashearClave(clave)),
+  sql(correo),
+  sql(clave ? await hashearClave(clave) : ""),
   sql(rol),
   sql(rol === "local" ? local! : null),
 ].join(", ")});`;
 
-const resultado = spawnSync(
-  "npx",
-  [
-    "wrangler",
-    "d1",
-    "execute",
-    "super-pedidos",
-    values.remoto ? "--remote" : "--local",
-    "--command",
-    comando,
-  ],
-  { stdio: "inherit" },
-);
-if (resultado.status !== 0) salir("No se pudo crear el usuario.");
+if (!ejecutar(comando, values.remoto)) salir("No se pudo crear el usuario.");
 console.log(`Usuario "${usuario}" creado (${rol}${rol === "local" ? `, local ${local}` : ""}).`);

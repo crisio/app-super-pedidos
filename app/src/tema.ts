@@ -19,3 +19,7 @@ export const colores = {
 export const degradadoMarca = ["#34d399", "#22d3ee"] as const;
 
 export const ANCHO_MAXIMO = 1200;
+
+// Color de acento de la app en iOS (botones, pestaña activa, enlaces). Un verde medio que
+// se lee bien sobre blanco y sobre negro, para el modo claro y el oscuro.
+export const TINTE_IOS = "#0B8A55";

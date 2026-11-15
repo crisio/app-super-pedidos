@@ -2,7 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ErrorApi } from "@super-pedidos/compartido";
 
 export function fallar(
-  status: 400 | 401 | 403 | 404 | 409 | 429,
+  status: 400 | 401 | 403 | 404 | 409 | 429 | 502 | 503,
   error: string,
   campos?: Record<string, string>,
 ) {

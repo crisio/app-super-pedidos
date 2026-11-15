@@ -77,7 +77,7 @@ export default function PanelLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
+        name="(pedidos)"
         options={{
           title: "Bandeja",
           tabBarIcon: ({ color }) => <ClipboardList size={20} color={color} />,
@@ -85,14 +85,14 @@ export default function PanelLayout() {
         }}
       />
       <Tabs.Screen
-        name="nuevo"
+        name="(nuevo)"
         options={{
           title: "Nuevo pedido",
           tabBarIcon: ({ color }) => <CirclePlus size={20} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="disponibilidad"
+        name="(disponibilidad)"
         options={{
           title: "Disponibilidad",
           tabBarIcon: ({ color }) => <Package size={20} color={color} />,

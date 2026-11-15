@@ -20,6 +20,9 @@
   ],
   "vars": {
     // Sitios web que pueden llamar a la API, separados por coma.
-    "ORIGENES_PERMITIDOS": "https://supercoquin.pensolabs.com,http://localhost:8081"
+    "ORIGENES_PERMITIDOS": "https://supercoquin.pensolabs.com,http://localhost:8081",
+    // Remitente de los códigos de acceso. El dominio tiene que estar verificado en Resend.
+    // La clave de Resend va como secret: wrangler secret put RESEND_API_KEY
+    "CORREO_REMITENTE": "Super Pedidos <acceso@pensolabs.com>"
   }
 }

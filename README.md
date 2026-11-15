@@ -6,7 +6,7 @@ Una sola app para **web, iOS y Android** (Expo) y un servidor en **Cloudflare Wo
 
 ## Qué hace hoy (fase 1: bandeja central)
 
-- **Acceso por usuario y contraseña**, con dos tipos de usuario:
+- **Acceso con un código por correo**: la persona escribe su correo, le llega un código de 6 números (enviado con [Resend](https://resend.com)) y entra. Usuario y contraseña quedan como respaldo. Hay dos tipos de usuario:
   - **Central**: ve los pedidos de todos los locales y captura pedidos para cualquiera.
   - **Local**: solo ve y atiende los pedidos de su local.
 - **Bandeja de pedidos**:
@@ -42,9 +42,34 @@ Reglas:
 
 **Límites de Cloudflare:** el plan gratis de Workers permite 100 mil filas escritas y 5 millones leídas por día en D1. Un inventario real (decenas de miles de productos por varias sucursales) pasa ese límite en una sola importación, así que para usarlo con datos reales hace falta el plan **Workers Paid** (5 dólares al mes), que incluye 50 millones de escrituras al mes.
 
+## Entrar con un código por correo
+
+1. La persona escribe su correo y la API le envía un código de 6 números con Resend. Vence en 10 minutos y sirve una sola vez.
+2. Con el código entra; en iPhone, iOS ofrece el código del correo encima del teclado.
+
+Seguridad: solo vale el último código de cada usuario, se pueden fallar 5 veces por código, se pueden pedir 5 códigos por hora (uno cada 30 segundos) y la base guarda solo el hash del código. La respuesta es la misma exista o no el correo, para no revelar quién tiene cuenta.
+
+**Configurarlo (una sola vez):**
+
+1. Crea una cuenta en [resend.com](https://resend.com) y agrega el dominio `pensolabs.com` en **Domains**. Como el dominio está en Cloudflare, Resend puede crear solo los registros DNS. Espera a que diga **Verified**.
+2. En **API Keys**, crea una clave con permiso **Sending access**.
+3. Guárdala en GitHub como secret **`RESEND_API_KEY`** (Settings → Secrets and variables → Actions). En la siguiente publicación el flujo se la pasa al Worker. Si publicas a mano: `cd api && npx wrangler secret put RESEND_API_KEY`.
+4. Ponle correo a cada usuario: `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --remoto`.
+
+El remitente es `Super Pedidos <acceso@pensolabs.com>` (`CORREO_REMITENTE` en `api/wrangler.jsonc`). Mientras falte la clave, la app avisa que la entrada por correo no está configurada y se puede entrar con usuario y contraseña. En tu computadora (`npm run api`) los códigos no se envían: salen en la terminal de la API.
+
 ## Diseño
 
-El estilo sigue a [Spectrum UI](https://github.com/arihantcodes/spectrum-ui) y [Aceternity UI](https://ui.aceternity.com). Esas librerías solo funcionan en páginas web, así que su look se rehízo con piezas que funcionan igual en web, iOS y Android:
+**iOS usa componentes nativos del sistema**, así que se ve y se comporta como una app de Apple:
+
+- Pestañas y barra de título del sistema, con Liquid Glass en iOS 26, títulos grandes y búsqueda en la barra.
+- Listas agrupadas como las de Ajustes, con los colores del sistema: sigue el modo claro u oscuro del iPhone.
+- Controles de SwiftUI con [Expo UI](https://docs.expo.dev/versions/latest/sdk/ui/): botones, menús desplegables, control segmentado y botones − +.
+- Menús nativos en la barra (elegir local, cuenta, llamar o cancelar un pedido), alertas del sistema, íconos SF Symbols y vibración al confirmar.
+
+Las pantallas de iOS son los archivos `.ios.tsx` en `app/src/app/` y sus piezas están en `app/src/components/ios/`. Android usará después sus propios componentes nativos (Material 3, con Jetpack Compose desde Expo UI); mientras tanto usa las mismas pantallas que la web.
+
+**La web** (y por ahora Android) sigue a [Spectrum UI](https://github.com/arihantcodes/spectrum-ui) y [Aceternity UI](https://ui.aceternity.com). Esas librerías solo funcionan en páginas web, así que su look se rehízo con piezas que funcionan igual en web, iOS y Android:
 
 - **[NativeWind](https://www.nativewind.dev)**: clases de Tailwind en React Native. La configuración está en `app/tailwind.config.js`.
 - **expo-linear-gradient** para los bordes y botones con degradado.
@@ -52,7 +77,7 @@ El estilo sigue a [Spectrum UI](https://github.com/arihantcodes/spectrum-ui) y [
 - **Reanimated** para el destello del botón principal, el punto que late en los pedidos nuevos y la aparición de las tarjetas.
 - **[Lucide](https://lucide.dev)**: los mismos íconos que usan shadcn/ui y Spectrum UI. Se importan uno por uno desde `app/src/components/iconos.ts`. Importar desde `lucide-react-native` directamente mete más de mil íconos en la app.
 
-La app siempre usa el tema oscuro. Los componentes base (tarjetas, botones, insignias, campos) están en `app/src/components/ui.tsx`.
+La web siempre usa el tema oscuro. Los componentes base (tarjetas, botones, insignias, campos) están en `app/src/components/ui.tsx`.
 
 ## Estructura
 
@@ -60,9 +85,10 @@ La app siempre usa el tema oscuro. Los componentes base (tarjetas, botones, insi
 api/          Servidor: Cloudflare Worker (Hono) + base de datos D1
   migrations/   esquema de la base de datos
   semillas/     datos de demostración (3 locales, 30 productos)
-  scripts/      crear-usuario.ts
+  scripts/      crear-usuario.ts, correo-usuario.ts
 app/          App Expo (web, iOS, Android)
-  src/app/      pantallas (Expo Router)
+  src/app/      pantallas (Expo Router); las .ios.tsx son las de iOS
+  src/components/ios/  piezas nativas de iOS
 compartido/   Estados, canales, reglas de precios y tipos que usan api y app
 ```
 
@@ -76,24 +102,24 @@ npm install
 # Base de datos local con datos de demostración y un usuario central
 npm run db:migrar:local -w @super-pedidos/api
 npm run db:demo:local -w @super-pedidos/api
-npm run crear-usuario -w @super-pedidos/api -- --usuario admin --nombre "Central" --rol central --clave "una-clave-larga"
+npm run crear-usuario -w @super-pedidos/api -- --usuario admin --nombre "Central" --rol central --correo tu@correo.com --clave "una-clave-larga"
 
-# En una terminal: el servidor (http://localhost:8787)
+# En una terminal: el servidor (http://localhost:8787). Los códigos para entrar salen aquí.
 npm run api
 
 # En otra terminal: la app web (http://localhost:8081)
 npm run app
 ```
 
-Para probar en un celular, instala **Expo Go**, corre `npm start -w @super-pedidos/app` y escanea el código QR. El celular no puede usar `localhost`: define `EXPO_PUBLIC_API_URL` con la IP de tu computadora, por ejemplo `EXPO_PUBLIC_API_URL=http://192.168.1.20:8787`.
+Para ver la app nativa en el iPhone, sigue la sección siguiente.
 
 Usuario de un local:
 
 ```bash
-npm run crear-usuario -w @super-pedidos/api -- --usuario centro --nombre "Encargado Centro" --rol local --local centro --clave "otra-clave-larga"
+npm run crear-usuario -w @super-pedidos/api -- --usuario centro --nombre "Encargado Centro" --rol local --local centro --correo encargado@correo.com
 ```
 
-Agrega `--remoto` para crearlo en la base de datos real en vez de la local.
+Con `--correo` entra con el código que le llega; `--clave` es opcional. Agrega `--remoto` para crearlo en la base de datos publicada en vez de la local. Para ponerle o cambiarle el correo a un usuario que ya existe: `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --remoto`.
 
 Revisiones antes de subir cambios:
 
@@ -124,9 +150,9 @@ npm install
 npm run iphone
 ```
 
-La primera vez tarda varios minutos: genera el proyecto de Xcode, instala las dependencias nativas y compila. Elige tu iPhone cuando aparezca la lista de dispositivos. Si pide un equipo de firma, elige tu **Personal Team**.
+Cada vez genera de nuevo el proyecto de Xcode (`app/ios`), así que los cambios de componentes nativos entran solos. La primera vez tarda varios minutos: instala las dependencias nativas y compila. Elige tu iPhone cuando aparezca la lista de dispositivos. Si pide un equipo de firma, elige tu **Personal Team**.
 
-**En el iPhone, la primera vez:** Ajustes → General → VPN y administración de dispositivos → tu Apple ID → **Confiar**. Después abre **Super Pedidos** y entra con un usuario de la base de datos publicada. Para crear otro usuario ahí, agrega `--remoto` a `npm run crear-usuario` (la primera vez pide entrar a Cloudflare con `npx wrangler login`).
+**En el iPhone, la primera vez:** Ajustes → General → VPN y administración de dispositivos → tu Apple ID → **Confiar**. Después abre **Super Pedidos** y entra con tu correo (o con usuario y contraseña mientras Resend no esté configurado). Para crear otro usuario ahí, agrega `--remoto` a `npm run crear-usuario` (la primera vez pide entrar a Cloudflare con `npx wrangler login`).
 
 **Para actualizarla** con los cambios nuevos: `git pull`, `npm install` y `npm run iphone`.
 
