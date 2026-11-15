@@ -15,14 +15,16 @@
       "binding": "DB",
       "database_name": "super-pedidos",
       "database_id": "65a3badd-bc40-4c3e-9ef1-26ff1e57ec35",
-      "migrations_dir": "migrations"
-    }
+      "migrations_dir": "migrations",
+    },
   ],
   "vars": {
     // Sitios web que pueden llamar a la API, separados por coma.
     "ORIGENES_PERMITIDOS": "https://supercoquin.pensolabs.com,http://localhost:8081",
     // Remitente de los códigos de acceso. El dominio tiene que estar verificado en Resend.
     // La clave de Resend va como secret: wrangler secret put RESEND_API_KEY
-    "CORREO_REMITENTE": "Super Pedidos <acceso@pensolabs.com>"
-  }
+    "CORREO_REMITENTE": "Super Pedidos <supercoquin@pensolabs.com>",
+    // Plantilla publicada en Resend para el código (variables CODE, USER_NAME y EXPIRES_MINUTES).
+    "RESEND_PLANTILLA": "superpedidos-verificacion",
+  },
 }

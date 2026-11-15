@@ -51,12 +51,13 @@ Seguridad: solo vale el último código de cada usuario, se pueden fallar 5 vece
 
 **Configurarlo (una sola vez):**
 
-1. Crea una cuenta en [resend.com](https://resend.com) y agrega el dominio `pensolabs.com` en **Domains**. Como el dominio está en Cloudflare, Resend puede crear solo los registros DNS. Espera a que diga **Verified**.
-2. En **API Keys**, crea una clave con permiso **Sending access**.
-3. Guárdala en GitHub como secret **`RESEND_API_KEY`** (Settings → Secrets and variables → Actions). En la siguiente publicación el flujo se la pasa al Worker. Si publicas a mano: `cd api && npx wrangler secret put RESEND_API_KEY`.
-4. Ponle correo a cada usuario: `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --remoto`.
+1. En [Resend](https://resend.com), el dominio `pensolabs.com` verificado y la plantilla **`superpedidos-verificacion`** publicada, con las variables `CODE`, `USER_NAME` y `EXPIRES_MINUTES` (10 por defecto). La API manda el código y el primer nombre; los minutos quedan en el valor por defecto, que coincide con lo que dura el código.
+2. Una clave de API con permiso para enviar desde `pensolabs.com`, guardada en GitHub como secret **`RESEND_API_KEY`** (Settings → Secrets and variables → Actions). En la siguiente publicación el flujo se la pasa al Worker. Si publicas a mano: `cd api && npx wrangler secret put RESEND_API_KEY`.
+3. Los correos de cada usuario. Uno puede tener varios (el personal y el del trabajo) y entra con cualquiera:
+   `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --correo otro@correo.com --remoto`.
+   Sin `--correo` muestra los que tiene; con `--quitar` borra los que pongas.
 
-El remitente es `Super Pedidos <acceso@pensolabs.com>` (`CORREO_REMITENTE` en `api/wrangler.jsonc`). Mientras falte la clave, la app avisa que la entrada por correo no está configurada y se puede entrar con usuario y contraseña. En tu computadora (`npm run api`) los códigos no se envían: salen en la terminal de la API.
+El remitente es `Super Pedidos <supercoquin@pensolabs.com>` y la plantilla, `superpedidos-verificacion` (`CORREO_REMITENTE` y `RESEND_PLANTILLA` en `api/wrangler.jsonc`). Sin `RESEND_PLANTILLA`, la API manda el correo con un diseño propio. Mientras falte la clave, la app avisa que la entrada por correo no está configurada y se puede entrar con usuario y contraseña. En tu computadora (`npm run api`) los códigos no se envían: salen en la terminal de la API.
 
 ## Diseño
 
@@ -85,7 +86,7 @@ La web siempre usa el tema oscuro. Los componentes base (tarjetas, botones, insi
 api/          Servidor: Cloudflare Worker (Hono) + base de datos D1
   migrations/   esquema de la base de datos
   semillas/     datos de demostración (3 locales, 30 productos)
-  scripts/      crear-usuario.ts, correo-usuario.ts
+  scripts/      crear-usuario.ts, correo-usuario.ts (correos con los que entra cada usuario)
 app/          App Expo (web, iOS, Android)
   src/app/      pantallas (Expo Router); las .ios.tsx son las de iOS
   src/components/ios/  piezas nativas de iOS
@@ -119,7 +120,7 @@ Usuario de un local:
 npm run crear-usuario -w @super-pedidos/api -- --usuario centro --nombre "Encargado Centro" --rol local --local centro --correo encargado@correo.com
 ```
 
-Con `--correo` entra con el código que le llega; `--clave` es opcional. Agrega `--remoto` para crearlo en la base de datos publicada en vez de la local. Para ponerle o cambiarle el correo a un usuario que ya existe: `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --remoto`.
+Con `--correo` (se puede repetir) entra con el código que le llega; `--clave` es opcional. Agrega `--remoto` para crearlo en la base de datos publicada en vez de la local. Para agregarle correos a un usuario que ya existe: `npm run correo-usuario -w @super-pedidos/api -- --usuario admin --correo tu@correo.com --remoto`.
 
 Revisiones antes de subir cambios:
 

@@ -142,7 +142,9 @@ export const rutasSesion = new Hono<Entorno>()
 
     const ahora = new Date();
     const fila = await c.env.DB.prepare(
-      "SELECT id, nombre, rol, local_id FROM usuarios WHERE correo = ? AND activo = 1",
+      `SELECT u.id, u.nombre, u.rol, u.local_id
+         FROM correos_usuario c JOIN usuarios u ON u.id = c.usuario_id
+        WHERE c.correo = ? AND u.activo = 1`,
     )
       .bind(correo)
       .first<FilaUsuario>();
@@ -197,7 +199,9 @@ export const rutasSesion = new Hono<Entorno>()
 
     const ahora = new Date();
     const fila = await c.env.DB.prepare(
-      "SELECT id, nombre, rol, local_id FROM usuarios WHERE correo = ? AND activo = 1",
+      `SELECT u.id, u.nombre, u.rol, u.local_id
+         FROM correos_usuario c JOIN usuarios u ON u.id = c.usuario_id
+        WHERE c.correo = ? AND u.activo = 1`,
     )
       .bind(correo)
       .first<FilaUsuario>();

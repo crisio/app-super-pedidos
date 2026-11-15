@@ -34,8 +34,13 @@ function escaparHtml(valor: string) {
   );
 }
 
+function primerNombre(nombre: string) {
+  return nombre.trim().split(/\s+/)[0] ?? "";
+}
+
+// Diseño propio, por si no hay plantilla de Resend configurada.
 function plantilla(nombre: string, codigo: string) {
-  const saludo = nombre ? `Hola, ${escaparHtml(nombre.split(" ")[0])}.` : "Hola.";
+  const saludo = nombre ? `Hola, ${escaparHtml(primerNombre(nombre))}.` : "Hola.";
   return `<!doctype html>
 <html lang="es">
   <body style="margin:0;padding:0;background:#f2f2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1c1c1e">
@@ -77,9 +82,21 @@ export async function enviarCodigo(
     body: JSON.stringify({
       from: env.CORREO_REMITENTE,
       to: [destino.correo],
+      // El código en el asunto: se ve en la notificación y iOS lo ofrece encima del teclado.
       subject: `${codigo} es tu código de Super Pedidos`,
-      html: plantilla(destino.nombre, codigo),
-      text: `Tu código para entrar a Super Pedidos es ${codigo}. Vence en ${MINUTOS_CODIGO} minutos. Si no lo pediste, ignora este correo.`,
+      ...(env.RESEND_PLANTILLA
+        ? {
+            // Con plantilla, Resend no acepta html ni text. EXPIRES_MINUTES se deja en el valor
+            // por defecto de la plantilla (10), que coincide con MINUTOS_CODIGO.
+            template: {
+              id: env.RESEND_PLANTILLA,
+              variables: { CODE: codigo, USER_NAME: primerNombre(destino.nombre) },
+            },
+          }
+        : {
+            html: plantilla(destino.nombre, codigo),
+            text: `Tu código para entrar a Super Pedidos es ${codigo}. Vence en ${MINUTOS_CODIGO} minutos. Si no lo pediste, ignora este correo.`,
+          }),
     }),
   });
   if (!respuesta.ok) {
