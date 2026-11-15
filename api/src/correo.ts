@@ -60,6 +60,22 @@ function plantilla(nombre: string, codigo: string) {
 </html>`;
 }
 
+function llamarResend(env: Bindings, cuerpo: Record<string, unknown>, idempotencia: string) {
+  return fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env.RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencia,
+    },
+    body: JSON.stringify(cuerpo),
+  });
+}
+
+// Respuestas de Resend que indican un problema con la plantilla (no existe, no está publicada o
+// sus variables no coinciden): entonces se manda el diseño propio para que el código llegue igual.
+const ERRORES_DE_PLANTILLA = [400, 404, 422];
+
 export async function enviarCodigo(
   env: Bindings,
   destino: { correo: string; nombre: string },
@@ -72,33 +88,48 @@ export async function enviarCodigo(
     return;
   }
 
-  const respuesta = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": idempotencia,
+  const base = {
+    from: env.CORREO_REMITENTE,
+    to: [destino.correo],
+    // El código en el asunto: se ve en la notificación y iOS lo ofrece encima del teclado.
+    subject: `${codigo} es tu código de Super Pedidos`,
+  };
+
+  let clave = idempotencia;
+  if (env.RESEND_PLANTILLA) {
+    // Con plantilla, Resend no acepta html ni text.
+    const respuesta = await llamarResend(
+      env,
+      {
+        ...base,
+        template: {
+          id: env.RESEND_PLANTILLA,
+          variables: {
+            CODE: codigo,
+            USER_NAME: primerNombre(destino.nombre),
+            EXPIRES_MINUTES: MINUTOS_CODIGO,
+          },
+        },
+      },
+      clave,
+    );
+    if (respuesta.ok) return;
+    console.error(
+      `Resend no aceptó la plantilla ${env.RESEND_PLANTILLA} (${respuesta.status}): ${await respuesta.text()}`,
+    );
+    if (!ERRORES_DE_PLANTILLA.includes(respuesta.status)) throw new Error("Resend no aceptó el correo.");
+    clave = `${idempotencia}-propio`;
+  }
+
+  const respuesta = await llamarResend(
+    env,
+    {
+      ...base,
+      html: plantilla(destino.nombre, codigo),
+      text: `Tu código para entrar a Super Pedidos es ${codigo}. Vence en ${MINUTOS_CODIGO} minutos. Si no lo pediste, ignora este correo.`,
     },
-    body: JSON.stringify({
-      from: env.CORREO_REMITENTE,
-      to: [destino.correo],
-      // El código en el asunto: se ve en la notificación y iOS lo ofrece encima del teclado.
-      subject: `${codigo} es tu código de Super Pedidos`,
-      ...(env.RESEND_PLANTILLA
-        ? {
-            // Con plantilla, Resend no acepta html ni text. EXPIRES_MINUTES se deja en el valor
-            // por defecto de la plantilla (10), que coincide con MINUTOS_CODIGO.
-            template: {
-              id: env.RESEND_PLANTILLA,
-              variables: { CODE: codigo, USER_NAME: primerNombre(destino.nombre) },
-            },
-          }
-        : {
-            html: plantilla(destino.nombre, codigo),
-            text: `Tu código para entrar a Super Pedidos es ${codigo}. Vence en ${MINUTOS_CODIGO} minutos. Si no lo pediste, ignora este correo.`,
-          }),
-    }),
-  });
+    clave,
+  );
   if (!respuesta.ok) {
     console.error(`Resend respondió ${respuesta.status}: ${await respuesta.text()}`);
     throw new Error("Resend no aceptó el correo.");
