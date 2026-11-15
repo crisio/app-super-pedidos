@@ -6,6 +6,7 @@ import { TINTE_IOS } from "@/tema";
 
 export const color = {
   fondo: PlatformColor("systemGroupedBackground"),
+  fondoHoja: PlatformColor("systemBackground"),
   celda: PlatformColor("secondarySystemGroupedBackground"),
   celdaPresionada: PlatformColor("systemGray4"),
   texto: PlatformColor("label"),

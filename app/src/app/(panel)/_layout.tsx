@@ -1,13 +1,16 @@
+import { useRouter } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { Pressable, Text, useWindowDimensions, View } from "react-native";
-import { ClipboardList, CirclePlus, LogOut, Package, Upload } from "@/components/iconos";
+import { CircleHelp, ClipboardList, CirclePlus, LogOut, Package, Upload } from "@/components/iconos";
 import { usePedidos } from "@/lib/consultas";
 import { useSesion, useUsuario } from "@/lib/sesion";
+import { useTutorialLaPrimeraVez } from "@/lib/tutorial";
 import { colores } from "@/tema";
 
 function BotonSalir() {
   const usuario = useUsuario();
   const { salir } = useSesion();
+  const router = useRouter();
   // En celular solo se muestra la inicial para que quepa el título.
   const { width } = useWindowDimensions();
   const compacto = width < 520;
@@ -29,6 +32,16 @@ function BotonSalir() {
       </View>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Cómo funciona"
+        onPress={() => router.push("/tutorial")}
+        hitSlop={8}
+        className="flex-row items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-white/10"
+      >
+        <CircleHelp size={15} color={colores.tenue} />
+        {compacto ? null : <Text className="text-sm font-medium text-zinc-300">Cómo funciona</Text>}
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
         accessibilityLabel="Salir"
         onPress={salir}
         hitSlop={8}
@@ -43,6 +56,7 @@ function BotonSalir() {
 
 export default function PanelLayout() {
   const usuario = useUsuario();
+  useTutorialLaPrimeraVez(usuario.id);
   const { width } = useWindowDimensions();
   const pantallaAncha = width >= 900;
 

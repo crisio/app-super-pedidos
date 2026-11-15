@@ -2,10 +2,12 @@
 import { NativeTabs } from "expo-router/native-tabs";
 import { usePedidos } from "@/lib/consultas";
 import { useUsuario } from "@/lib/sesion";
+import { useTutorialLaPrimeraVez } from "@/lib/tutorial";
 import { TINTE_IOS } from "@/tema";
 
 export default function PanelIOS() {
   const usuario = useUsuario();
+  useTutorialLaPrimeraVez(usuario.id);
   // Aviso en la pestaña: pedidos nuevos sin aceptar.
   const activos = usePedidos("activos", usuario.rol === "local" ? usuario.localId : null);
   const nuevos = activos.data?.filter((pedido) => pedido.estado === "recibido").length ?? 0;

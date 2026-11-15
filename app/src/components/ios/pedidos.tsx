@@ -1,5 +1,5 @@
 // Piezas de iOS que comparten la bandeja, el detalle y el nuevo pedido.
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { Alert, type ColorValue } from "react-native";
 import type { SFSymbol } from "sf-symbols-typescript";
@@ -86,6 +86,7 @@ export function BarraPanel({
 }) {
   const usuario = useUsuario();
   const { salir } = useSesion();
+  const router = useRouter();
 
   function confirmarSalida() {
     Alert.alert("¿Cerrar sesión?", "Para volver a entrar te enviaremos un código a tu correo.", [
@@ -120,6 +121,9 @@ export function BarraPanel({
         title={`${usuario.nombre} · ${usuario.rol === "central" ? "Central" : "Local"}`}
         accessibilityLabel="Cuenta"
       >
+        <Stack.Toolbar.MenuAction icon="questionmark.circle" onPress={() => router.push("/tutorial")}>
+          Cómo funciona
+        </Stack.Toolbar.MenuAction>
         <Stack.Toolbar.MenuAction
           icon="rectangle.portrait.and.arrow.right"
           destructive

@@ -4,13 +4,17 @@
 export { default as ArrowRight } from "lucide-react-native/icons/arrow-right";
 export { default as Bike } from "lucide-react-native/icons/bike";
 export { default as CircleAlert } from "lucide-react-native/icons/circle-alert";
+export { default as CircleArrowRight } from "lucide-react-native/icons/circle-arrow-right";
 export { default as CircleCheck } from "lucide-react-native/icons/circle-check";
+export { default as CircleHelp } from "lucide-react-native/icons/circle-question-mark";
 export { default as CirclePlus } from "lucide-react-native/icons/circle-plus";
 export { default as ClipboardList } from "lucide-react-native/icons/clipboard-list";
 export { default as Clock } from "lucide-react-native/icons/clock";
 export { default as FileSpreadsheet } from "lucide-react-native/icons/file-spreadsheet";
 export { default as History } from "lucide-react-native/icons/rotate-ccw-clock";
+export { default as Inbox } from "lucide-react-native/icons/inbox";
 export { default as LogOut } from "lucide-react-native/icons/log-out";
+export { default as Mail } from "lucide-react-native/icons/mail";
 export { default as MapPin } from "lucide-react-native/icons/map-pin";
 export { default as MessageCircle } from "lucide-react-native/icons/message-circle";
 export { default as Minus } from "lucide-react-native/icons/minus";

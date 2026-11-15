@@ -94,6 +94,7 @@ function Navegacion() {
       <Stack.Protected guard={sesion !== null} redirectTo="/entrar">
         <Stack.Screen name="(panel)" />
         <Stack.Screen name="pedido/[id]" options={{ headerShown: true, title: "Pedido" }} />
+        <Stack.Screen name="tutorial" options={{ presentation: "modal", title: "Cómo funciona" }} />
       </Stack.Protected>
       <Stack.Protected guard={sesion === null} redirectTo="/">
         <Stack.Screen name="entrar" />

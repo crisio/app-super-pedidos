@@ -22,6 +22,18 @@ Una sola app para **web, iOS y Android** (Expo) y un servidor en **Cloudflare Wo
 - **Disponibilidad por local**: un interruptor por producto para marcarlo agotado o disponible.
 - **Contacto con el cliente**: botón para escribirle por WhatsApp con el estado del pedido ya redactado, y botón para llamar.
 
+## Tutorial: así funciona
+
+La app lo muestra sola la primera vez que alguien entra en un dispositivo, y después se abre desde **Cómo funciona** (en iPhone, en el menú de la cuenta; en la web, junto a **Salir**). Los pasos están en `app/src/lib/tutorial.ts`.
+
+1. **Entras con tu correo.** Escribes tu correo y te llega un código de 6 números que vence en 10 minutos. En iPhone, el código aparece solo encima del teclado.
+2. **Todos los pedidos llegan a la bandeja.** App, WhatsApp, teléfono, redes y deliveries externos, en un solo lugar. Se actualiza sola y la pestaña avisa cuántos pedidos nuevos hay.
+3. **Avanzas cada pedido.** Lo abres y tocas el botón principal: aceptar, preparar, listo, en camino y entregado. Si se cae, lo cancelas con el motivo. Todo queda en el historial.
+4. **Le avisas al cliente.** Desde el pedido lo llamas o le escribes por WhatsApp con el estado ya redactado.
+5. **Capturas pedidos de WhatsApp o teléfono.** En **Nuevo pedido** eliges por dónde llegó, el cliente, la entrega y los productos. Solo aparecen los disponibles en ese local y el total se calcula solo.
+6. **Marcas lo que se agotó.** En **Disponibilidad** apagas un producto y deja de aparecer en los pedidos nuevos de ese local.
+7. **Locales.** La central ve todos los locales juntos o elige uno, e importa el inventario de SAP desde la web. Un usuario de local ve y atiende solo su local.
+
 Reglas provisionales (en `compartido/src/pedidos.ts`): envío a domicilio L 60, gratis desde L 800; tarifa de servicio para deliveries externos L 30.
 
 ## Importar el inventario de SAP
